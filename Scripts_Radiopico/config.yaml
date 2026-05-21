@@ -1,0 +1,27 @@
+Vbias: 58
+bin_size:
+  bin_toa: 3
+  bin_tot: 49
+channels:
+- 19
+daq:
+  duration: 60
+  frequency: 100000
+  list_thr: []
+  thresholds:
+  - 300
+dcr:
+  start_threshold: 100
+  step: 20
+  stop_threshold: 700
+devices:
+- i2c_defaults: E:/algoAmaury/Scripts_Radiopico/radio_default_i2c.csv
+  ip: 192.168.1.10
+  serial_port: COM6
+list_gain:
+- 8
+measurement_config: 0
+measurement_type: DCR
+pamp_gain: 8
+session_name: TestCalibration
+wdir: C:\Users\amaur\Documents\git\weeroc\Scripts_Radiopico./
