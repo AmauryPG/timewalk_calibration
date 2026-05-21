@@ -8,6 +8,7 @@ import numpy as np
 from pathlib import Path
 import struct
 import os
+from os.path import abspath
 
 absolutePathToCurrentFolder = Path(__file__).resolve().parent
 
@@ -139,7 +140,9 @@ def calib_TDC(tof_data):
     return DT_cum[raw_data_i] + rng.random(raw_data_i.size) * DT[raw_data_i]
 
 def readBinaryWeerocFileWithPicoCalibrated(pathToBinaryFile):
-    tot_array, tof_array, size = readBinaryWeerocFile(pathToBinaryFile)
+    absolutePath = Path(pathToBinaryFile).expanduser()
+
+    tot_array, tof_array, size = readBinaryWeerocFile(absolutePath)
 
     # Apply TDC calibration to the ToF data
     return tot_array, calib_TDC(tof_array), size

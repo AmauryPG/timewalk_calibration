@@ -15,6 +15,23 @@ def offsetTimeWalk(lowerX, upperX, wholeX):
 
     return k
 
+def split_paired_arrays(A, B, N):
+    if len(A) != len(B):
+        raise ValueError("A and B must have the same length")
+
+    k, m = divmod(np.max(A), N)
+
+    A_split = []
+    B_split = []
+    boundaries = [k * i for i in range(0, N + 1)]
+
+    for i in range(N):
+        mask = (A >= boundaries[i]) & (A < boundaries[i + 1])
+        A_split.append(A[mask])
+        B_split.append(B[mask])
+
+    return A_split, B_split, k
+
 def linear_regression(x, y):
     """
     Simple linear regression:
@@ -50,7 +67,7 @@ def linear_regression(x, y):
 if __name__ == "__main__":
 
     tot, tof, size = readBinaryWeerocFileWithPicoCalibrated(
-        "/home/daniel/Documents/data/measures/21_avril/data_section_2_Btot49_Btoa12_Gain10_Thr600_56V_Freq80000_240s.bin"
+        "~/Documents/data/measures/21_avril/data_section_2_Btot49_Btoa12_Gain10_Thr600_56V_Freq80000_240s.bin"
     )
 
     # Convert everything to numpy arrays
@@ -131,13 +148,9 @@ if __name__ == "__main__":
 
     c_array = slope * tot_filtered + intercept
 
-    m, b = linear_regression(tot_filtered, tof_filtered)
+    print(f"Slope Before Correction : " + str(slope))
 
-    print(f"Slope : " + str(slope))
-    print(f"Slope R: " + str(m))
-
-    print(f"Intercept : " + str(intercept))
-    print(f"Intercept R: " + str(b))
+    print(f"Intercept Before Correction : " + str(intercept))
 
     # Optional sorting for clean line display
     sort_idx = np.argsort(tot_filtered)
@@ -208,16 +221,10 @@ if __name__ == "__main__":
     plt.close()
 
     # -----------------------------
-    canalCutoff = (max(tot_filtered) - min(tot_filtered)) // 2
+    nbrCanal = 8
+    tot_canal, tof_canal, canal_split_value = split_paired_arrays(tot_filtered, tof_filtered, nbrCanal)
 
     plt.figure()
-
-    plt.axvline(
-        x=canalCutoff,
-        color='r',
-        linestyle='--',
-        label="Canal cutoff"
-    )
 
     plt.scatter(
         tot_filtered,
@@ -226,6 +233,85 @@ if __name__ == "__main__":
         alpha=0.4,
         edgecolors="none",
         label='Data keep'
+    )
+
+    for i in range(nbrCanal):
+        plt.axvline(
+            x=canal_split_value * i,
+            color='r',
+            linestyle='--',
+            label="Canal cutoff " + str(i)
+        )
+
+        plt.scatter(
+            tot_canal[i],
+            tof_canal[i],
+            s=5,
+            alpha=0.4,
+            edgecolors="none",
+            label='Canal ' + str(i)
+        )
+
+    plt.xlabel("ToT")
+    plt.ylabel("ToF corrected")
+    plt.title("Canal cutoff")   
+    plt.savefig("canal_timewalk_canal.png")
+
+    # -----------------------------
+    tof_filtered_mean = np.mean(tof_filtered)
+    tof_matrix = np.zeros(nbrCanal-1)
+    N = [canal_split_value * i for i in range(1, nbrCanal)]
+
+    for i in range(nbrCanal-1):
+        no_highest_canal = np.sum(tof_canal[i] - tof_filtered_mean)
+
+    highest_canal = np.sum(tof_canal[-1] - tof_filtered_mean)
+
+    inverse_matrix = np.linalg.inv(no_highest_canal.reshape(-1, 1))
+
+    correction_time_walk = np.dot(-highest_canal, inverse_matrix)
+    
+    correction = correction_time_walk / N
+    correction = np.append(correction, 0)
+
+    print(f"Correction values : " + str(correction))
+
+    tof_corrected = np.array([])
+    for i in range(nbrCanal):
+        temp = tof_canal[i] + correction[i]
+        tof_corrected = np.append(tof_corrected, temp)
+
+    tot_filtered = tot_filtered[:-1]
+    # -----------------------------
+    # Linear regression
+    # -----------------------------
+    slope, intercept = np.polyfit(
+        tot_filtered,
+        tof_corrected,
+        1
+    )
+
+    c_array = slope * tot_filtered + intercept
+
+    print(f"Slope After Correction : " + str(slope))
+
+    print(f"Intercept After Correction : " + str(intercept))
+
+    # Optional sorting for clean line display
+    sort_idx = np.argsort(tot_filtered)
+
+    x_fit = tot_filtered[sort_idx]
+    y_fit = c_array[sort_idx]
+
+    plt.figure()
+
+    plt.scatter(
+        tot_filtered,
+        tof_corrected,
+        s=5,
+        alpha=0.4,
+        edgecolors="none",
+        label='Canal ' + str(i)
     )
 
     plt.plot(
@@ -238,78 +324,4 @@ if __name__ == "__main__":
     plt.xlabel("ToT")
     plt.ylabel("ToF corrected")
     plt.title("Canal cutoff")   
-    plt.savefig("canal_timewalk_canal.png")
-
-    tot_lower = np.array([])
-    tof_lower = np.array([])
-    tot_upper = np.array([])
-    tof_upper = np.array([])
-
-    for i in range(len(tot_filtered)):
-        if tot_filtered[i] < canalCutoff:
-            tot_lower = np.append(tot_lower, tot_filtered[i])
-            tof_lower = np.append(tof_lower, tof_filtered[i])
-        else:
-            tot_upper = np.append(tot_upper, tot_filtered[i])
-            tof_upper = np.append(tof_upper, tof_filtered[i])
-
-    # -----------------------------
-    correctionFactor = offsetTimeWalk(tof_lower, tof_upper, tof_filtered)
-
-    print(f"Correction factor: {correctionFactor}")
-
-    tof_corrected = np.append((tof_lower + correctionFactor), tof_upper)
-
-    slope, intercept = np.polyfit(
-        tot_filtered,
-        tof_corrected,
-        1
-    )
-
-    c_array = slope * tot_filtered + intercept
-
-    m, b = linear_regression(tot_filtered, tof_corrected)
-
-    print(f"Slope : " + str(slope))
-    print(f"Slope R: " + str(m))
-
-    print(f"Intercept : " + str(intercept))
-    print(f"Intercept R: " + str(b))
-
-    # Optional sorting for clean line display
-    sort_idx = np.argsort(tot_filtered)
-
-    x_fit = tot_filtered[sort_idx]
-    y_fit = c_array[sort_idx]
-    
-    plt.figure()
-
-    plt.axvline(
-        x=canalCutoff,
-        color='r',
-        linestyle='--',
-        label="Canal cutoff"
-    )
-
-    plt.scatter(
-        tot_filtered,
-        tof_corrected,
-        s=5,
-        alpha=0.4,
-        edgecolors="none",
-        label='Data keep'
-    )
-
-
-    plt.plot(
-        x_fit,
-        y_fit,
-        color='r',
-        label='Linear fit'
-    )
-
-
-    plt.xlabel("ToT")
-    plt.ylabel("ToF corrected")
-    plt.title("Corrected time walk")   
-    plt.savefig("canal_timewalk_correction.png")
+    plt.savefig("canal_timewalk_corrected.png")
