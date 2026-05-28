@@ -38,7 +38,7 @@ def linear_regression(x, y):
 if __name__ == "__main__":
 
     tot, tof, size = readBinaryWeerocFileWithPicoCalibrated(
-        "/home/daniel/Documents/data/measures/21_avril/data_section_2_Btot49_Btoa12_Gain10_Thr700_56-65V_Freq80000_60s.bin"
+        "~/Documents/data/measures/21_avril/data_section_2_Btot49_Btoa12_Gain10_Thr700_56-65V_Freq80000_60s.bin"
     )
     tofBin = 12
 

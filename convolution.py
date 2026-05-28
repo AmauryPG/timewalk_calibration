@@ -107,7 +107,7 @@ def find_index(array1, array2,
 if __name__ == "__main__":
 
     tot, tof, size = readBinaryWeerocFileWithPicoCalibrated(
-        "/home/daniel/Documents/data/measures/21_avril/data_section_2_Btot49_Btoa12_Gain10_Thr700_56-65V_Freq80000_60s.bin"
+        "~/Documents/data/measures/21_avril/data_section_2_Btot49_Btoa12_Gain10_Thr700_56-65V_Freq80000_60s.bin"
     )
     tofBin = 12
 
@@ -282,7 +282,7 @@ if __name__ == "__main__":
 
         canalsToF.append(tof_)
 
-        meanToT.append(tot_[len(tot_)/2])
+        meanToT.append(tot_[len(tot_)//2])
         meanToF.append(np.mean(tof_))
 
         plt.scatter(

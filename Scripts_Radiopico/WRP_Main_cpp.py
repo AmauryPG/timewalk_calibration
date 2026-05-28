@@ -356,7 +356,7 @@ if __name__ == "__main__":
 
         takeOneMeasurementDAQ(absolutePathToWorkDirectory, sessionName, binToT, binToF, preampGain, selectedChannel, thresholdsDAC, laserFrequency, durationTimeSeconds, Bias)
     elif(type == "analyse"):
-        path = "/home/daniel/Documents/remmina/bunker/mesures"
+        path = "~/Documents/remmina/bunker/mesures"
 
         countList = []
 

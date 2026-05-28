@@ -2,7 +2,107 @@ from Scripts_Radiopico.ReadBinaryWeeroc import *
 import numpy as np
 import matplotlib.pyplot as plt
 from tools import histogram, split_by_first_value_range, fit_emg, calculate_fwhm
+from scipy.spatial import cKDTree
+from scipy.stats import gaussian_kde
+import seaborn as sns
 
+def compute_fwhm(x, y):
+    """
+    Compute FWHM from sampled curve.
+    """
+
+    half_max = np.max(y) / 2
+
+    indices = np.where(y >= half_max)[0]
+
+    if len(indices) < 2:
+        return np.inf
+
+    return x[indices[-1]] - x[indices[0]]
+
+
+def find_offset_min_fwhm(
+    array1,
+    array2,
+    offset_range=(0, 1500),
+    step=1,
+    grid_size=2000
+):
+    """
+    Find offset minimizing FWHM of combined arrays.
+    """
+
+    array1 = np.asarray(array1).ravel()
+    array2 = np.asarray(array2).ravel()
+
+    offsets = np.arange(
+        offset_range[0],
+        offset_range[1],
+        step
+    )
+
+    # Common evaluation grid
+    xmin = min(array1.min(), array2.min()) + offset_range[0]
+    xmax = max(array1.max(), array2.max()) + offset_range[1]
+
+    xgrid = np.linspace(xmin, xmax, grid_size)
+
+    fwhms = []
+
+    for shift in offsets:
+
+        combined = np.concatenate([
+            array1,
+            array2 + shift
+        ])
+
+        kde = gaussian_kde(combined)
+
+        y = kde(xgrid)
+
+        fwhm = compute_fwhm(xgrid, y)
+
+        fwhms.append(fwhm)
+
+    fwhms = np.array(fwhms)
+
+    best_offset = offsets[np.argmin(fwhms)]
+
+    return best_offset, offsets, fwhms
+
+def find_index(array1, array2,
+                offset_range=(-1000, 1000),
+                step=1,
+                radius=20):
+
+    array1 = np.asarray(array1).ravel()
+    array2 = np.asarray(array2).ravel()
+
+    offsets = np.arange(
+        offset_range[0],
+        offset_range[1],
+        step
+    )
+
+    # KDTree on reference array
+    tree = cKDTree(array1[:, None])
+
+    scores = np.zeros(len(offsets))
+
+    for i, shift in enumerate(offsets):
+
+        shifted = array2 + shift
+
+        neighbors = tree.query_ball_point(
+            shifted[:, None],
+            r=radius
+        )
+
+        scores[i] = sum(len(n) for n in neighbors)
+
+    best_offset = offsets[np.argmax(scores)]
+
+    return best_offset, scores, offsets
 
 if __name__ == "__main__":
 
@@ -69,7 +169,7 @@ if __name__ == "__main__":
 
     plt.legend()
     plt.tight_layout()
-    plt.savefig("img/arithmetic/whole_share_space.png")
+    plt.savefig("img/kde/whole_share_space.png")
     plt.close()
 
     # -----------------------------
@@ -107,7 +207,7 @@ if __name__ == "__main__":
     plt.title("ToF/ToT of main events")
 
     plt.tight_layout()
-    plt.savefig("img/arithmetic/cutoff_share_space.png")
+    plt.savefig("img/kde/cutoff_share_space.png")
     plt.close()
 
     # -----------------------------
@@ -124,7 +224,7 @@ if __name__ == "__main__":
     plt.ylabel("Count")
     plt.title("Histogram ToF for the main event")
 
-    plt.savefig("img/arithmetic/histogram_cutoff")
+    plt.savefig("img/kde/histogram_cutoff")
 
     # -----------------------------
     # Keep / removed comparison
@@ -156,7 +256,7 @@ if __name__ == "__main__":
 
     plt.legend()
     plt.tight_layout()
-    plt.savefig("img/arithmetic/mix_share_space.png")
+    plt.savefig("img/kde/mix_share_space.png")
     plt.close()
 
     # -----------------------------
@@ -173,17 +273,11 @@ if __name__ == "__main__":
 
     canalsToF = []
 
-    meanToT = []
-    meanToF = []
-
     for index in range(nbrCanal):
         tot_ = [p[0] for p in rawCanals[index]]
         tof_ = [p[1] for p in rawCanals[index]]
 
         canalsToF.append(tof_)
-
-        meanToT.append(tot_[len(tot_)//2])
-        meanToF.append(np.mean(tof_))
 
         plt.scatter(
             tot_,
@@ -200,59 +294,102 @@ if __name__ == "__main__":
     
     plt.legend()
     plt.tight_layout()
-    plt.savefig("img/arithmetic/rawCanals.png")
+    plt.savefig("img/kde/rawCanals.png")
     plt.close()
 
-    plt.figure()
-    
+
+    # -----------------------------
+
     for index in range(nbrCanal):
+        plt.figure()
+
+        #tot_ = [p[0] for p in rawCanals[index]]
+        tof_ = [p[1] for p in rawCanals[index]]
+        idx = [i for i in range(len(rawCanals[index]))]
 
         plt.scatter(
-            meanToT[index],
-            meanToF[index],
-            label=f"Mean Canal {index+1}",
+            tof_,
+            idx,
+            label=f"Convulsion canal {index}",
+            s=5,
+            alpha=0.4,
+            edgecolors="none"
         )
 
-    plt.xlabel("ToT")
-    plt.ylabel("ToF")
-    plt.title("Canal splitted")
-    
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig("img/arithmetic/meansCanals.png")
-    plt.close()
+        plt.xlabel("ToF")
+        plt.ylabel("Index")        
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig(f"img/kde/convulsionCanals_{index}.png")
 
+    # --------------------
 
-    correction = meanToF[-1] - meanToF[:-1]
-    correction = np.append(correction, 0)
+    peaks = []
 
-    print(f"Correction : {correction}")
-    
+    for index in range(nbrCanal):
+        plt.figure()
+
+        tof_ = [p[1] for p in rawCanals[index]]
+
+        my_kde = sns.kdeplot(tof_)
+        line = my_kde.lines[0]
+        x, y = line.get_data()
+
+        index_peak_y = np.argmax(y)
+
+        peaks.append(x[index_peak_y])
+
+        plt.scatter(
+            x,
+            y,
+            label=f"Convulsion canal {index}",
+            s=5,
+            alpha=0.4,
+            edgecolors="none"
+        )
+
+        plt.xlabel("ToF")
+        plt.ylabel("Index")        
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig(f"img/kde/countCanals_{index}.png")
+        
+    # --------------------
+    correction_timewalk = peaks[-1] - peaks[:-1]
+
+    print(f"Correction : {correction_timewalk}")
+
     plt.figure()
 
     tof_corrected = []
-    
-    for index in range(nbrCanal):
+
+    for index in range(nbrCanal-1):
+
         tot_ = [p[0] for p in rawCanals[index]]
         tof_ = [p[1] for p in rawCanals[index]]
 
-        tof_corrected.extend(tof_ + correction[index])
+        temp_corrected_tof = tof_ + correction_timewalk[index]
+
+        tof_corrected.extend(temp_corrected_tof)
 
         plt.scatter(
             tot_,
-            tof_ - correction[index],
-            label=f"Canal {index+1}",
+            temp_corrected_tof,
+            label=f"Convulsion canal {index}",
             s=5,
             alpha=0.4,
             edgecolors="none"
         )
 
     plt.xlabel("ToT")
-    plt.ylabel("ToF")
-    plt.title("Canal splitted Corrected")
-    plt.savefig("img/arithmetic/correctedCanals.png")
+    plt.ylabel("ToF")        
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(f"img/kde/correctedCanals.png")
+    # --------------------
+    np.savez('data_tof_kde.npz', array1=tof_corrected)
 
-    np.savez('data_tof_arithmetic.npz', array1=tof_corrected)
+    plt.figure()
 
     histogramCorrectedX, histogramCorrectedY = histogram(tof_corrected, tofBin)
     histogramX, histogramY = histogram(tof_filtered, tofBin)
@@ -290,13 +427,10 @@ if __name__ == "__main__":
     plt.xlabel("ToT")
     plt.ylabel("ToF")
     plt.legend()
-    plt.title("Histogram with Arithmetic Alignment Corrected vs Original")
-    plt.savefig("img/arithmetic/histogram.png")
+    plt.title("Histogram with KDE Alignment Corrected vs Original")
+    plt.savefig("img/kde/histogram.png")
 
     print(f"Original FWHM  : {calculate_fwhm(histogramX, fitHistogram_y)}")
     print(f"Corrected FWHM : {calculate_fwhm(histogramCorrectedX, fitHistogramCorrected_y)}")
     print(f"Original peak  : {histogramX[np.argmax(fitHistogram_y)]}")
     print(f"Corrected peak : {histogramCorrectedX[np.argmax(fitHistogramCorrected_y)]}")
-
-    # --------------------
-

@@ -128,11 +128,11 @@ def glrt(signal, noise_mean=0.0, noise_std=1.0):
 if __name__ == "__main__":
 
     emptyToT, emptyToF, size = readBinaryWeerocFileWithPicoCalibrated(
-        "/home/daniel/Documents/data/measures/21_avril/data_section_2_Btot49_Btoa12_Gain10_Thr667_56-15V_Freq80000_60s.bin"
+        "~/Documents/data/measures/21_avril/data_section_2_Btot49_Btoa12_Gain10_Thr667_56-15V_Freq80000_60s.bin"
     )
 
     validToT, validToF, size = readBinaryWeerocFileWithPicoCalibrated(
-        "/home/daniel/Documents/data/measures/21_avril/data_section_2_Btot49_Btoa12_Gain10_Thr700_56-65V_Freq80000_60s.bin"
+        "~/Documents/data/measures/21_avril/data_section_2_Btot49_Btoa12_Gain10_Thr700_56-65V_Freq80000_60s.bin"
     )
 
     tofBin = 12

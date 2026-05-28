@@ -134,12 +134,12 @@ def calib_TDC(tof_data):
     rng = np.random.default_rng(1234)
     raw_data_i = np.round(tof_data / float(12.2)).astype(int)
 
-    print(max(raw_data_i))
-
     return DT_cum[raw_data_i] + rng.random(raw_data_i.size) * DT[raw_data_i]
 
 def readBinaryWeerocFileWithPicoCalibrated(pathToBinaryFile):
-    tot_array, tof_array, size = readBinaryWeerocFile(pathToBinaryFile)
+    absolutePathToBinaryFile = Path(pathToBinaryFile).expanduser().resolve()
+
+    tot_array, tof_array, size = readBinaryWeerocFile(absolutePathToBinaryFile)
 
     # Apply TDC calibration to the ToF data
     return tot_array, calib_TDC(tof_array), size
@@ -149,7 +149,7 @@ def readBinaryWeerocFileWithPicoCalibrated(pathToBinaryFile):
 # -------------------------------
 if __name__ == "__main__":
     FILE_LIST = [
-        "/home/daniel/Documents/data/dataWeeroc/data_25_sept/measurment1/MatriceMeasurements_Hamamatsu_58.5/data_section_0_Btot49_Btoa12_Gain8_Thr370_58.5V_1min.bin"
+        "~/Documents/data/dataWeeroc/data_25_sept/measurment1/MatriceMeasurements_Hamamatsu_58.5/data_section_0_Btot49_Btoa12_Gain8_Thr370_58.5V_1min.bin"
     ]
 
     for path in FILE_LIST:
