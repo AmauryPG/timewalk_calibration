@@ -30,12 +30,21 @@ def timeWalkCorrection_arithmetic(canals):
 
     return correction_coefficients_timewalk, correctedToFCanals
 
-def timeWalkCorrection_kde(events):
-    rawToFCanals = [p[1] for p in events]
+def timeWalkCorrection_kde(canals):
+    nbrCanal = len(canals)
+
+    rawToFCanals = []
+    meanToFCanals = []
+
+    for canal in canals:
+        rawToFCanal = [p[1] for p in canal]
+
+        rawToFCanals.append(rawToFCanal)
+        meanToFCanals.append(np.mean(rawToFCanal))
 
     peaks = []
 
-    for index in range(len(events)):
+    for index in range(nbrCanal):
 
         my_kde = sns.kdeplot(rawToFCanals[index])
         line = my_kde.lines[0]
@@ -46,14 +55,17 @@ def timeWalkCorrection_kde(events):
         peaks.append(x[index_peak_y])
 
     # Calculate the offset for each energy canal
-    correction_timewalk = peaks[-1] - peaks[:-1]
+    correction_coefficients_timewalk = peaks[-1] - peaks[:-1]
 
     # Add 0 offset for the highest energy canal
-    correction_timewalk = np.append(correction_timewalk, 0)
+    correction_coefficients_timewalk = np.append(correction_coefficients_timewalk, 0)
 
-    correctedToFCanals = rawToFCanals + correction_timewalk
+    correctedToFCanals = []
 
-    return correction_timewalk, correctedToFCanals
+    for index in range(nbrCanal):
+        correctedToFCanals.append(rawToFCanals[index] + correction_coefficients_timewalk[index])
+
+    return correction_coefficients_timewalk, correctedToFCanals
 
 def cutoff(tot, tof,
             lowerThresholdNoise,
@@ -99,30 +111,60 @@ if __name__ == "__main__":
 
     rawCanals, rawToTCanals, rawToFCanals = split_canal_by_first_value(canalFiltered, nbrCanal)
 
-    correction_coefficients_timewalk, correctedToFCanals = timeWalkCorrection_arithmetic(rawCanals)
+    correction_coefficients_timewalk_arithmetic, correctedToFCanals_arithmetic = timeWalkCorrection_arithmetic(rawCanals)
+    correction_coefficients_timewalk_kde, correctedToFCanals_kde = timeWalkCorrection_kde(rawCanals)
 
-    correctedToF = []
+    correctedToF_arithmetic = []
+    correctedToF_kde = []
 
     for index in range(nbrCanal):
         tot_ = rawToTCanals[index]
-        tof_ = correctedToFCanals[index]
+        
+        correctedToF_arithmetic.extend(correctedToFCanals_arithmetic[index])
+        correctedToF_kde.extend(correctedToFCanals_kde[index])
 
-        correctedToF.extend(tof_)
+    # Histogram
+    histogram_arithmeticX, histogram_arithmeticY = histogram(correctedToF_arithmetic, tofBin)
+    histogram_kdeX, histogram_kdeY = histogram(correctedToF_kde, tofBin)
 
-        plt.scatter(
-            tot_, 
-            tof_,
-            label=f"Canal {index}, Offset {correction_coefficients_timewalk[index]}",
-            s=5,
-            alpha=0.4,
-            edgecolors="none"
-        )
-    
-    plt.xlabel("ToT")
-    plt.ylabel("ToF")
-    plt.title("Time-Walk Corrected")
+    # Fit
+    params, fitHistogram_arithmeticY = fit_emg(histogram_arithmeticX, histogram_arithmeticY)
+    params, fitHistogram_kdeY = fit_emg(histogram_kdeX, histogram_kdeY)
+
+    plt.figure()
+
+    plt.plot(
+        histogram_arithmeticX,
+        fitHistogram_arithmeticY
+    )
+
+    plt.plot(
+        histogram_kdeX,
+        fitHistogram_kdeY
+    )
+
+    plt.scatter(
+        histogram_arithmeticX,
+        histogram_arithmeticY,
+        label=f"Arithmetic",
+        s=5,
+        alpha=0.4,
+        edgecolors="none"
+    )
+
+    plt.scatter(
+        histogram_kdeX,
+        histogram_kdeY,
+        label=f"KDE",
+        s=5,
+        alpha=0.4,
+        edgecolors="none"
+    )
+
+    plt.xlabel("ToF")
+    plt.ylabel("Count")
+    plt.title(f"Different time-walk correction methods bin width={tofBin}")
     
     plt.legend()
     plt.tight_layout()
-    plt.savefig("img/combine/correctedCanals.png")
-    plt.close()
+    plt.savefig("img/combine/compare.png")
