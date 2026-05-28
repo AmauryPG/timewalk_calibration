@@ -3,7 +3,7 @@ import numpy as np
 from scipy.optimize import curve_fit
 from scipy.stats import exponnorm
 
-def split_by_first_value_range(arr, n):
+def split_canal_by_first_value(arr, n):
     first_values = [x[0] for x in arr]
 
     min_val = min(first_values)
@@ -12,6 +12,8 @@ def split_by_first_value_range(arr, n):
     step = (max_val - min_val) / n
 
     buckets = [[] for _ in range(n)]
+    bucketsToF = [[] for _ in range(n)]
+    bucketsToT = [[] for _ in range(n)]
 
     for item in arr:
         value = item[0]
@@ -23,8 +25,10 @@ def split_by_first_value_range(arr, n):
             index = n - 1
 
         buckets[index].append(item)
+        bucketsToT[index].append(item[0])
+        bucketsToF[index].append(item[1])
 
-    return buckets
+    return buckets, bucketsToT, bucketsToF
 
 def histogram(data, binWidth):
     """

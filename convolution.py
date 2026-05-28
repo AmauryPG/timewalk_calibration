@@ -1,7 +1,7 @@
 from Scripts_Radiopico.ReadBinaryWeeroc import *
 import numpy as np
 import matplotlib.pyplot as plt
-from tools import histogram, split_by_first_value_range, fit_emg, calculate_fwhm
+from tools import histogram, split_canal_by_first_value, fit_emg, calculate_fwhm
 from scipy.spatial import cKDTree
 from scipy.stats import gaussian_kde
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -267,7 +267,7 @@ if __name__ == "__main__":
     for i in range(len(tof_filtered)):
         main_event.append((tot_filtered[i], tof_filtered[i]))
 
-    rawCanals = split_by_first_value_range(main_event, nbrCanal)
+    rawCanals = split_canal_by_first_value(main_event, nbrCanal)
 
     plt.figure()
 

@@ -1,7 +1,7 @@
 from Scripts_Radiopico.ReadBinaryWeeroc import *
 import numpy as np
 import matplotlib.pyplot as plt
-from tools import histogram, split_by_first_value_range, fit_emg, calculate_fwhm
+from tools import histogram, split_canal_by_first_value, fit_emg, calculate_fwhm
 from scipy.spatial import cKDTree
 from scipy.stats import gaussian_kde
 import seaborn as sns
@@ -118,7 +118,7 @@ if __name__ == "__main__":
 
     lowerThresholdNoise = 2400
     upperThresholdNoise = 35000
-    upperThresholdScattering = 4.3E4
+    upperThresholdScattering = 7.5E4
     lowerThresholdScattering = 4E4
 
     # -----------------------------
@@ -267,7 +267,7 @@ if __name__ == "__main__":
     for i in range(len(tof_filtered)):
         main_event.append((tot_filtered[i], tof_filtered[i]))
 
-    rawCanals = split_by_first_value_range(main_event, nbrCanal)
+    rawCanals = split_canal_by_first_value(main_event, nbrCanal)
 
     plt.figure()
 
@@ -310,7 +310,7 @@ if __name__ == "__main__":
         plt.scatter(
             tof_,
             idx,
-            label=f"Convulsion canal {index}",
+            label=f"Canal {index}",
             s=5,
             alpha=0.4,
             edgecolors="none"
@@ -320,7 +320,7 @@ if __name__ == "__main__":
         plt.ylabel("Index")        
         plt.legend()
         plt.tight_layout()
-        plt.savefig(f"img/kde/convulsionCanals_{index}.png")
+        plt.savefig(f"img/kde/rawCanals_{index}.png")
 
     # --------------------
 
@@ -356,6 +356,7 @@ if __name__ == "__main__":
         
     # --------------------
     correction_timewalk = peaks[-1] - peaks[:-1]
+    correction_timewalk = np.append(correction_timewalk, 0)
 
     print(f"Correction : {correction_timewalk}")
 
@@ -363,7 +364,7 @@ if __name__ == "__main__":
 
     tof_corrected = []
 
-    for index in range(nbrCanal-1):
+    for index in range(nbrCanal):
 
         tot_ = [p[0] for p in rawCanals[index]]
         tof_ = [p[1] for p in rawCanals[index]]

@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from tools import histogram, split_by_first_value_range, fit_emg, calculate_fwhm
+from tools import histogram, split_canal_by_first_value, fit_emg, calculate_fwhm
 from Scripts_Radiopico.ReadBinaryWeeroc import *
 
 if __name__ == "__main__":

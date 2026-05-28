@@ -1,7 +1,7 @@
 from Scripts_Radiopico.ReadBinaryWeeroc import *
 import numpy as np
 import matplotlib.pyplot as plt
-from tools import histogram, split_by_first_value_range, fit_emg, calculate_fwhm
+from tools import histogram, split_canal_by_first_value, fit_emg, calculate_fwhm
 
 
 if __name__ == "__main__":
@@ -18,7 +18,7 @@ if __name__ == "__main__":
 
     lowerThresholdNoise = 2400
     upperThresholdNoise = 35000
-    upperThresholdScattering = 4.3E4
+    upperThresholdScattering = 7.5E4
     lowerThresholdScattering = 4E4
 
     # -----------------------------
@@ -167,7 +167,7 @@ if __name__ == "__main__":
     for i in range(len(tof_filtered)):
         main_event.append((tot_filtered[i], tof_filtered[i]))
 
-    rawCanals = split_by_first_value_range(main_event, nbrCanal)
+    rawCanals = split_canal_by_first_value(main_event, nbrCanal)
 
     plt.figure()
 
