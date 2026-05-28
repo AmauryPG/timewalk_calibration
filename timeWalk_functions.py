@@ -103,79 +103,91 @@ if __name__ == "__main__":
     nbrCanal = 8
     boolGraph = False
 
-    tof_filtered, tof_out_filtered, tot_filtered, tot_out_filtered = cutoff(tot, tof, 2400, 35000, 7.5E4, 4E4)
+    parametersFitHistogram = []
 
-    canalFiltered = []
+    for upperThresholdScattering in np.arange(4.3E4, 20E4, 10E4):
+        tof_filtered, tof_out_filtered, tot_filtered, tot_out_filtered = cutoff(tot, tof, 2400, 35000, upperThresholdScattering, 4E4)
 
-    for i in range(len(tof_filtered)):
-        canalFiltered.append((tot_filtered[i], tof_filtered[i]))
+        canalFiltered = []
 
-    rawCanals, rawToTCanals, rawToFCanals = split_canal_by_first_value(canalFiltered, nbrCanal)
+        for i in range(len(tof_filtered)):
+            canalFiltered.append((tot_filtered[i], tof_filtered[i]))
 
-    correction_coefficients_timewalk_arithmetic, correctedToFCanals_arithmetic = timeWalkCorrection_arithmetic(rawCanals)
-    correction_coefficients_timewalk_kde, correctedToFCanals_kde = timeWalkCorrection_kde(rawCanals)
+        rawCanals, rawToTCanals, rawToFCanals = split_canal_by_first_value(canalFiltered, nbrCanal)
 
-    correctedToF_arithmetic = []
-    correctedToF_kde = []
+        correction_coefficients_timewalk_arithmetic, correctedToFCanals_arithmetic = timeWalkCorrection_arithmetic(rawCanals)
+        correction_coefficients_timewalk_kde, correctedToFCanals_kde = timeWalkCorrection_kde(rawCanals)
 
-    for index in range(nbrCanal):
-        tot_ = rawToTCanals[index]
-        
-        correctedToF_arithmetic.extend(correctedToFCanals_arithmetic[index])
-        correctedToF_kde.extend(correctedToFCanals_kde[index])
+        correctedToF_arithmetic = []
+        correctedToF_kde = []
 
-    # Histogram
-    histogram_arithmeticX, histogram_arithmeticY = histogram(correctedToF_arithmetic, tofBin)
-    histogram_kdeX, histogram_kdeY = histogram(correctedToF_kde, tofBin)
+        for index in range(nbrCanal):
+            tot_ = rawToTCanals[index]
+            
+            correctedToF_arithmetic.extend(correctedToFCanals_arithmetic[index])
+            correctedToF_kde.extend(correctedToFCanals_kde[index])
 
-    # Fit
-    params, fitHistogram_arithmeticY = fit_emg(histogram_arithmeticX, histogram_arithmeticY)
-    params, fitHistogram_kdeY = fit_emg(histogram_kdeX, histogram_kdeY)
+        # Histogram
+        histogram_arithmeticX, histogram_arithmeticY = histogram(correctedToF_arithmetic, tofBin)
+        histogram_kdeX, histogram_kdeY = histogram(correctedToF_kde, tofBin)
 
-    # Extract parameters about histogram fit    
-    peak_arithmetic = histogram_arithmeticX[np.argmax(fitHistogram_arithmeticY)]
-    peak_kde = histogram_kdeX[np.argmax(fitHistogram_kdeY)]
+        # Fit
+        params, fitHistogram_arithmeticY = fit_emg(histogram_arithmeticX, histogram_arithmeticY)
+        params, fitHistogram_kdeY = fit_emg(histogram_kdeX, histogram_kdeY)
 
-    fwhm_arithmetic = calculate_fwhm(histogram_arithmeticX, fitHistogram_arithmeticY)
-    fwhm_kde = calculate_fwhm(histogram_kdeX, fitHistogram_kdeY)
+        # Extract parameters about histogram fit    
+        peak_arithmetic = histogram_arithmeticX[np.argmax(fitHistogram_arithmeticY)]
+        peak_kde = histogram_kdeX[np.argmax(fitHistogram_kdeY)]
 
+        fwhm_arithmetic = calculate_fwhm(histogram_arithmeticX, fitHistogram_arithmeticY)
+        fwhm_kde = calculate_fwhm(histogram_kdeX, fitHistogram_kdeY)
 
-    if boolGraph:
-        plt.figure()
+        params_arithmetic = {"arithmetic": ({"peak" : peak_arithmetic}, {"fwhm" : fwhm_arithmetic})}
+        params_kde = {"kde": ({"peak" : peak_kde}, {"fwhm" : fwhm_kde})}
 
-        plt.plot(
-            histogram_arithmeticX,
-            fitHistogram_arithmeticY
-        )
+        parametersFitHistogram.append({upperThresholdScattering : [params_arithmetic, params_kde]})
 
-        plt.plot(
-            histogram_kdeX,
-            fitHistogram_kdeY
-        )
+        if boolGraph:
+            plt.figure()
 
-        plt.scatter(
-            histogram_arithmeticX,
-            histogram_arithmeticY,
-            label=f"Arithmetic",
-            s=5,
-            alpha=0.4,
-            edgecolors="none"
-        )
+            plt.plot(
+                histogram_arithmeticX,
+                fitHistogram_arithmeticY
+            )
 
-        plt.scatter(
-            histogram_kdeX,
-            histogram_kdeY,
-            label=f"KDE",
-            s=5,
-            alpha=0.4,
-            edgecolors="none"
-        )
+            plt.plot(
+                histogram_kdeX,
+                fitHistogram_kdeY
+            )
 
-        plt.xlabel("ToF")
-        plt.ylabel("Count")
-        plt.title(f"Different time-walk correction methods bin width={tofBin}")
-        
-        plt.legend()
-        plt.tight_layout()
-        plt.show()
-        #plt.savefig("img/combine/compare.png")
+            plt.scatter(
+                histogram_arithmeticX,
+                histogram_arithmeticY,
+                label=f"Arithmetic",
+                s=5,
+                alpha=0.4,
+                edgecolors="none"
+            )
+
+            plt.scatter(
+                histogram_kdeX,
+                histogram_kdeY,
+                label=f"KDE",
+                s=5,
+                alpha=0.4,
+                edgecolors="none"
+            )
+
+            plt.xlabel("ToF")
+            plt.ylabel("Count")
+            plt.title(f"Different time-walk correction methods bin width={tofBin}")
+            
+            plt.legend()
+            plt.tight_layout()
+            plt.show()
+            #plt.savefig("img/combine/compare.png")
+
+    for params in parametersFitHistogram:
+        print(params.keys())
+        print(params.get(params.keys()))
+        break
