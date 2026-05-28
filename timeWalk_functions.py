@@ -101,6 +101,7 @@ if __name__ == "__main__":
 
     tofBin = 12
     nbrCanal = 8
+    boolGraph = False
 
     tof_filtered, tof_out_filtered, tot_filtered, tot_out_filtered = cutoff(tot, tof, 2400, 35000, 7.5E4, 4E4)
 
@@ -131,40 +132,50 @@ if __name__ == "__main__":
     params, fitHistogram_arithmeticY = fit_emg(histogram_arithmeticX, histogram_arithmeticY)
     params, fitHistogram_kdeY = fit_emg(histogram_kdeX, histogram_kdeY)
 
-    plt.figure()
+    # Extract parameters about histogram fit    
+    peak_arithmetic = histogram_arithmeticX[np.argmax(fitHistogram_arithmeticY)]
+    peak_kde = histogram_kdeX[np.argmax(fitHistogram_kdeY)]
 
-    plt.plot(
-        histogram_arithmeticX,
-        fitHistogram_arithmeticY
-    )
+    fwhm_arithmetic = calculate_fwhm(histogram_arithmeticX, fitHistogram_arithmeticY)
+    fwhm_kde = calculate_fwhm(histogram_kdeX, fitHistogram_kdeY)
 
-    plt.plot(
-        histogram_kdeX,
-        fitHistogram_kdeY
-    )
 
-    plt.scatter(
-        histogram_arithmeticX,
-        histogram_arithmeticY,
-        label=f"Arithmetic",
-        s=5,
-        alpha=0.4,
-        edgecolors="none"
-    )
+    if boolGraph:
+        plt.figure()
 
-    plt.scatter(
-        histogram_kdeX,
-        histogram_kdeY,
-        label=f"KDE",
-        s=5,
-        alpha=0.4,
-        edgecolors="none"
-    )
+        plt.plot(
+            histogram_arithmeticX,
+            fitHistogram_arithmeticY
+        )
 
-    plt.xlabel("ToF")
-    plt.ylabel("Count")
-    plt.title(f"Different time-walk correction methods bin width={tofBin}")
-    
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig("img/combine/compare.png")
+        plt.plot(
+            histogram_kdeX,
+            fitHistogram_kdeY
+        )
+
+        plt.scatter(
+            histogram_arithmeticX,
+            histogram_arithmeticY,
+            label=f"Arithmetic",
+            s=5,
+            alpha=0.4,
+            edgecolors="none"
+        )
+
+        plt.scatter(
+            histogram_kdeX,
+            histogram_kdeY,
+            label=f"KDE",
+            s=5,
+            alpha=0.4,
+            edgecolors="none"
+        )
+
+        plt.xlabel("ToF")
+        plt.ylabel("Count")
+        plt.title(f"Different time-walk correction methods bin width={tofBin}")
+        
+        plt.legend()
+        plt.tight_layout()
+        plt.show()
+        #plt.savefig("img/combine/compare.png")
