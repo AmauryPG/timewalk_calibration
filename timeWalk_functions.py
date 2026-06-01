@@ -3,6 +3,111 @@ from Scripts_Radiopico.ReadBinaryWeeroc import *
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+import numpy as np
+from scipy.optimize import minimize
+
+
+def binless_histogram(data, n_grid=200, lam=0.01):
+    """
+    Binless histogram (TV-regularized density estimate).
+
+    Parameters
+    ----------
+    data : array_like
+        Input samples.
+    n_grid : int
+        Number of grid points.
+    lam : float
+        TV regularization strength.
+
+    Returns
+    -------
+    x : ndarray
+        Grid coordinates.
+    pdf : ndarray
+        Estimated density.
+    """
+
+    data = np.asarray(data)
+    data = np.sort(data)
+
+    xmin = data.min()
+    xmax = data.max()
+
+    x = np.linspace(xmin, xmax, n_grid)
+    dx = x[1] - x[0]
+
+    # empirical CDF sampled on grid
+    z = np.searchsorted(data, x, side='right') / len(data)
+
+    # cumulative integration operator
+    A = np.tril(np.ones((n_grid, n_grid))) * dx
+
+    # finite difference operator
+    D = np.zeros((n_grid - 1, n_grid))
+    for i in range(n_grid - 1):
+        D[i, i] = -1.0
+        D[i, i + 1] = 1.0
+
+    def objective(u):
+        fit = 0.5 * np.sum((A @ u - z) ** 2)
+        tv = lam * np.sum(np.abs(D @ u))
+        return fit + tv
+
+    # initial guess: uniform density
+    u0 = np.ones(n_grid)
+    u0 /= np.sum(u0) * dx
+
+    bounds = [(0.0, None)] * n_grid
+
+    result = minimize(
+        objective,
+        u0,
+        method="L-BFGS-B",
+        bounds=bounds,
+        options={"maxiter": 1000}
+    )
+
+    pdf = result.x
+
+    # normalize
+    #pdf /= np.trapezoid(pdf, x)
+
+    return x, pdf
+
+def timeWalkCorrection_binless(canals):
+    nbrCanal = len(canals)
+
+    rawToFCanals = []
+
+    for canal in canals:
+        rawToFCanal = [p[1] for p in canal]
+
+        rawToFCanals.append(rawToFCanal)
+
+    peaks = []
+
+    for index in range(nbrCanal):
+
+        x, y = binless_histogram(rawToFCanals[index])
+
+        index_peak_y = np.argmax(y)
+
+        peaks.append(x[index_peak_y])
+
+    # Calculate the offset for each energy canal
+    correction_coefficients_timewalk = peaks[-1] - peaks[:-1]
+
+    # Add 0 offset for the highest energy canal
+    correction_coefficients_timewalk = np.append(correction_coefficients_timewalk, 0)
+
+    correctedToFCanals = []
+
+    for index in range(nbrCanal):
+        correctedToFCanals.append(rawToFCanals[index] + correction_coefficients_timewalk[index])
+
+    return correction_coefficients_timewalk, correctedToFCanals
+
 
 def timeWalkCorrection_arithmetic(canals):
     nbrCanal = len(canals)
@@ -34,13 +139,11 @@ def timeWalkCorrection_kde(canals):
     nbrCanal = len(canals)
 
     rawToFCanals = []
-    meanToFCanals = []
 
     for canal in canals:
         rawToFCanal = [p[1] for p in canal]
 
         rawToFCanals.append(rawToFCanal)
-        meanToFCanals.append(np.mean(rawToFCanal))
 
     peaks = []
 
@@ -103,9 +206,9 @@ if __name__ == "__main__":
     nbrCanal = 8
     boolGraph = False
 
-    parametersFitHistogram = []
+    parametersFitHistogram = {}
 
-    for upperThresholdScattering in np.arange(4.3E4, 20E4, 10E4):
+    for upperThresholdScattering in np.arange(4.5E4, 20E4, 1E3):
         tof_filtered, tof_out_filtered, tot_filtered, tot_out_filtered = cutoff(tot, tof, 2400, 35000, upperThresholdScattering, 4E4)
 
         canalFiltered = []
@@ -117,35 +220,42 @@ if __name__ == "__main__":
 
         correction_coefficients_timewalk_arithmetic, correctedToFCanals_arithmetic = timeWalkCorrection_arithmetic(rawCanals)
         correction_coefficients_timewalk_kde, correctedToFCanals_kde = timeWalkCorrection_kde(rawCanals)
+        correction_coefficients_timewalk_binless, correctedToFCanals_binless = timeWalkCorrection_binless(rawCanals)
 
         correctedToF_arithmetic = []
         correctedToF_kde = []
+        correctedToF_binless = []
 
         for index in range(nbrCanal):
             tot_ = rawToTCanals[index]
             
             correctedToF_arithmetic.extend(correctedToFCanals_arithmetic[index])
             correctedToF_kde.extend(correctedToFCanals_kde[index])
+            correctedToF_binless.extend(correctedToFCanals_binless[index])
 
         # Histogram
         histogram_arithmeticX, histogram_arithmeticY = histogram(correctedToF_arithmetic, tofBin)
         histogram_kdeX, histogram_kdeY = histogram(correctedToF_kde, tofBin)
+        histogram_binlessX, histogram_binlessY = histogram(correctedToF_binless, tofBin)
 
         # Fit
-        params, fitHistogram_arithmeticY = fit_emg(histogram_arithmeticX, histogram_arithmeticY)
-        params, fitHistogram_kdeY = fit_emg(histogram_kdeX, histogram_kdeY)
+        _, fitHistogram_arithmeticY = fit_emg(histogram_arithmeticX, histogram_arithmeticY)
+        _, fitHistogram_kdeY = fit_emg(histogram_kdeX, histogram_kdeY)
+        _, fitHistogram_binlessY = fit_emg(histogram_binlessX, histogram_binlessY)
 
         # Extract parameters about histogram fit    
         peak_arithmetic = histogram_arithmeticX[np.argmax(fitHistogram_arithmeticY)]
         peak_kde = histogram_kdeX[np.argmax(fitHistogram_kdeY)]
+        peak_binless = histogram_binlessX[np.argmax(fitHistogram_binlessY)]
 
         fwhm_arithmetic = calculate_fwhm(histogram_arithmeticX, fitHistogram_arithmeticY)
         fwhm_kde = calculate_fwhm(histogram_kdeX, fitHistogram_kdeY)
+        fwhm_binless = calculate_fwhm(histogram_binlessX, fitHistogram_binlessY)
 
-        params_arithmetic = {"arithmetic": ({"peak" : peak_arithmetic}, {"fwhm" : fwhm_arithmetic})}
-        params_kde = {"kde": ({"peak" : peak_kde}, {"fwhm" : fwhm_kde})}
+        parametersFitHistogram.setdefault("arithmetic", []).append((upperThresholdScattering, fwhm_arithmetic, peak_arithmetic))  
+        parametersFitHistogram.setdefault("kde", []).append((upperThresholdScattering, fwhm_kde, peak_kde))  
+        parametersFitHistogram.setdefault("binless", []).append((upperThresholdScattering, fwhm_binless, peak_binless))  
 
-        parametersFitHistogram.append({upperThresholdScattering : [params_arithmetic, params_kde]})
 
         if boolGraph:
             plt.figure()
@@ -178,6 +288,15 @@ if __name__ == "__main__":
                 edgecolors="none"
             )
 
+            plt.scatter(
+                histogram_binlessX,
+                histogram_binlessY,
+                label=f"Binless",
+                s=5,
+                alpha=0.4,
+                edgecolors="none"
+            )
+
             plt.xlabel("ToF")
             plt.ylabel("Count")
             plt.title(f"Different time-walk correction methods bin width={tofBin}")
@@ -187,7 +306,36 @@ if __name__ == "__main__":
             plt.show()
             #plt.savefig("img/combine/compare.png")
 
-    for params in parametersFitHistogram:
-        print(params.keys())
-        print(params.get(params.keys()))
-        break
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 6))
+
+    np.savez("parameters", parametersFitHistogram)
+
+    for methodName in parametersFitHistogram:
+
+        threshold = [p[0] for p in parametersFitHistogram[methodName]]
+        fwhm = [p[1] for p in parametersFitHistogram[methodName]]
+        peak = [p[2] for p in parametersFitHistogram[methodName]]
+
+        ax1.scatter(
+            threshold,
+            fwhm,
+            label=f"{methodName}"
+        )
+
+        ax2.scatter(
+            threshold,
+            peak,
+            label=f"{methodName}"
+        )
+
+    ax1.set_xlabel("Threshold ToF [ps]")
+    ax1.set_ylabel("FWHM [ps]")
+    ax1.set_title(f"Parameters on different time-walk correction methods, histogram bin=12.2ps")
+    ax1.legend()
+
+    ax2.set_xlabel("Threshold ToF [ps] ")
+    ax2.set_ylabel("ToF Peak [ps]")
+    ax2.legend()
+    
+    plt.tight_layout()
+    plt.savefig("img/combine/params.png")
