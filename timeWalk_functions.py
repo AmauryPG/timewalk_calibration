@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import minimize
 
-
 def binless_histogram(data, n_grid=200, lam=0.01):
     """
     Binless histogram (TV-regularized density estimate).
@@ -209,6 +208,7 @@ if __name__ == "__main__":
     parametersFitHistogram = {}
 
     for upperThresholdScattering in np.arange(4.5E4, 20E4, 1E3):
+        print(f"Processing upperThresholdScattering={upperThresholdScattering}...")
         tof_filtered, tof_out_filtered, tot_filtered, tot_out_filtered = cutoff(tot, tof, 2400, 35000, upperThresholdScattering, 4E4)
 
         canalFiltered = []
@@ -308,7 +308,7 @@ if __name__ == "__main__":
 
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 6))
 
-    np.savez("parameters", parametersFitHistogram)
+    np.savez("parameters", param=parametersFitHistogram)
 
     for methodName in parametersFitHistogram:
 
