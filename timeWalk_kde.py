@@ -267,21 +267,19 @@ if __name__ == "__main__":
     for i in range(len(tof_filtered)):
         main_event.append((tot_filtered[i], tof_filtered[i]))
 
-    rawCanals = split_canal_by_first_value(main_event, nbrCanal)
+    _, rawCanalsToT, rawCanalsToF = split_canal_by_first_value(main_event, nbrCanal)
 
     plt.figure()
 
     canalsToF = []
 
     for index in range(nbrCanal):
-        tot_ = [p[0] for p in rawCanals[index]]
-        tof_ = [p[1] for p in rawCanals[index]]
 
-        canalsToF.append(tof_)
+        canalsToF.append(rawCanalsToF[index])
 
         plt.scatter(
-            tot_,
-            tof_,
+            rawCanalsToT[index],
+            rawCanalsToF[index],
             label=f"Canal {index+1}",
             s=5,
             alpha=0.4,
@@ -304,11 +302,10 @@ if __name__ == "__main__":
         plt.figure()
 
         #tot_ = [p[0] for p in rawCanals[index]]
-        tof_ = [p[1] for p in rawCanals[index]]
-        idx = [i for i in range(len(rawCanals[index]))]
+        idx = [i for i in range(len(rawCanalsToF[index]))]
 
         plt.scatter(
-            tof_,
+            rawCanalsToF[index],
             idx,
             label=f"Canal {index}",
             s=5,
@@ -329,7 +326,7 @@ if __name__ == "__main__":
     for index in range(nbrCanal):
         plt.figure()
 
-        tof_ = [p[1] for p in rawCanals[index]]
+        tof_ = rawCanalsToF[index]
 
         my_kde = sns.kdeplot(tof_)
         line = my_kde.lines[0]
@@ -366,8 +363,8 @@ if __name__ == "__main__":
 
     for index in range(nbrCanal):
 
-        tot_ = [p[0] for p in rawCanals[index]]
-        tof_ = [p[1] for p in rawCanals[index]]
+        tot_ = rawCanalsToT[index]
+        tof_ = rawCanalsToF[index]
 
         temp_corrected_tof = tof_ + correction_timewalk[index]
 
@@ -425,13 +422,21 @@ if __name__ == "__main__":
         label="Original"
     )
 
-    plt.xlabel("ToT")
-    plt.ylabel("ToF")
+    plt.xlabel("ToF")
+    plt.ylabel("Count")
     plt.legend()
     plt.title("Histogram with KDE Alignment Corrected vs Original")
     plt.savefig("img/kde/histogram.png")
+
+
+    peakHistogram = histogramX[np.argmax(fitHistogram_y)]
+    zoomInRange = 2500
+    plt.xlim(peakHistogram - zoomInRange, peakHistogram + zoomInRange)
+    plt.savefig("img/kde/histogramZoomIn.png")
+
 
     print(f"Original FWHM  : {calculate_fwhm(histogramX, fitHistogram_y)}")
     print(f"Corrected FWHM : {calculate_fwhm(histogramCorrectedX, fitHistogramCorrected_y)}")
     print(f"Original peak  : {histogramX[np.argmax(fitHistogram_y)]}")
     print(f"Corrected peak : {histogramCorrectedX[np.argmax(fitHistogramCorrected_y)]}")
+
