@@ -3,6 +3,42 @@ import numpy as np
 from scipy.optimize import curve_fit
 from scipy.stats import exponnorm
 
+def canals_to_histogram(canals, binWidth):
+    canal_histogram = []
+    all_event_raw = []
+
+    for canal in canals:
+        all_event_raw.extend(canal)
+
+        edges_canal, counts_canal = histogram(canal, binWidth)
+
+        canal_histogram.append((edges_canal, counts_canal))
+    
+    edges_all_canals, counts_all_canals = histogram(all_event_raw, binWidth)
+
+    return (edges_all_canals, counts_all_canals), canal_histogram
+
+def split_canal_by_number(arr, n):
+    number_events = len(arr)
+    events_per_canal = number_events // n
+
+    buckets = [[] for _ in range(n)]
+    bucketsToF = [[] for _ in range(n)]
+    bucketsToT = [[] for _ in range(n)]
+    current_canal = 0
+
+    arr_sorted = sorted(arr, key=lambda x: x[0])
+
+    for item in arr_sorted:
+        buckets[current_canal].append(item)
+        bucketsToT[current_canal].append(item[0])
+        bucketsToF[current_canal].append(item[1])
+
+        if len(buckets[current_canal]) >= events_per_canal and current_canal < n - 1:
+            current_canal += 1
+
+    return buckets, bucketsToT, bucketsToF
+
 def split_canal_by_first_value(arr, n):
     first_values = [x[0] for x in arr]
 

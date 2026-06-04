@@ -1,86 +1,76 @@
-import numpy as np
-from scipy.optimize import minimize
+from timeWalk_functions import *
+from tools import *
 
+if __name__ == "__main__":
 
-def binless_histogram(data, n_grid=200, lam=0.01):
-    """
-    Binless histogram (TV-regularized density estimate).
-
-    Parameters
-    ----------
-    data : array_like
-        Input samples.
-    n_grid : int
-        Number of grid points.
-    lam : float
-        TV regularization strength.
-
-    Returns
-    -------
-    x : ndarray
-        Grid coordinates.
-    pdf : ndarray
-        Estimated density.
-    """
-
-    data = np.asarray(data)
-    data = np.sort(data)
-
-    xmin = data.min()
-    xmax = data.max()
-
-    x = np.linspace(xmin, xmax, n_grid)
-    dx = x[1] - x[0]
-
-    # empirical CDF sampled on grid
-    z = np.searchsorted(data, x, side='right') / len(data)
-
-    # cumulative integration operator
-    A = np.tril(np.ones((n_grid, n_grid))) * dx
-
-    # finite difference operator
-    D = np.zeros((n_grid - 1, n_grid))
-    for i in range(n_grid - 1):
-        D[i, i] = -1.0
-        D[i, i + 1] = 1.0
-
-    def objective(u):
-        fit = 0.5 * np.sum((A @ u - z) ** 2)
-        tv = lam * np.sum(np.abs(D @ u))
-        return fit + tv
-
-    # initial guess: uniform density
-    u0 = np.ones(n_grid)
-    u0 /= np.sum(u0) * dx
-
-    bounds = [(0.0, None)] * n_grid
-
-    result = minimize(
-        objective,
-        u0,
-        method="L-BFGS-B",
-        bounds=bounds,
-        options={"maxiter": 1000}
+    tot, tof, size = readBinaryWeerocFileWithPicoCalibrated(
+        "~/Documents/data/measures/21_avril/data_section_2_Btot49_Btoa12_Gain10_Thr700_56-65V_Freq80000_60s.bin"
     )
 
-    pdf = result.x
+    nbrCanal = 8
+    canalFiltered = []
+    binWidth = 12
 
-    # normalize
-    pdf /= np.trapezoid(pdf, x)
+    threshold = 2400
 
-    return x, pdf
+    for i in range(size):
+        if tot[i] > threshold and tot[i] < 4E4 and tof[i] < 4.5E4:
+            canalFiltered.append((tot[i], tof[i]))
 
-import matplotlib.pyplot as plt
+    rawCanals, rawToTCanals, rawToFCanals = split_canal_by_number(canalFiltered, nbrCanal)
+    correction_coefficients_timewalk_kde, correctedToFCanals_kde = timeWalkCorrection_kde(rawCanals)
+    correctedHistogramToF, correctedHistogramToF_canals = canals_to_histogram(correctedToFCanals_kde, binWidth=binWidth)
 
-np.random.seed(0)
+    print(f"Correction coefficients (kde): {correction_coefficients_timewalk_kde}")
 
-data = np.concatenate([
-    np.random.normal(-1, 0.3, 500),
-    np.random.normal( 1, 0.2, 500)
-])
+    plt.close()
+    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(8, 6))
 
-x, pdf = binless_histogram(data, n_grid=300, lam=0.02)
+    for index in range(nbrCanal):
+        ax1.scatter(rawToTCanals[index],
+                    rawToFCanals[index],
+                    label=f"Canal {index}",
+                    s=5,
+                    alpha=0.4,
+                    edgecolors="none")
+        
+    ax1.set_xlabel("ToT")
+    ax1.set_ylabel("ToF")
+    ax1.set_title("Raw Data")
+    ax1.legend()
 
-plt.hist(data, bins=40, density=True, alpha=0.3)
-plt.plot(x, pdf, lw=2, color="red")
-plt.show()
+    arr = np.array(rawToTCanals, dtype=object)
+
+    for index in range(nbrCanal):
+        ax2.scatter(rawToTCanals[index],
+                    correctedToFCanals_kde[index],
+                    label=f"Canal {index}",
+                    s=5,
+                    alpha=0.4,
+                    edgecolors="none")
+        
+    ax2.set_xlabel("ToT")
+    ax2.set_ylabel("ToF")
+    ax2.set_title("Corrected Raw Data")
+    ax2.legend()
+    
+    ax3.plot(
+        correctedHistogramToF[0],
+        correctedHistogramToF[1],
+        label="Corrected Histogram",
+    )
+
+    originalHistogramX, originalHistogramY = histogram([p[1] for p in canalFiltered], binWidth=binWidth)
+
+    ax3.plot(
+        originalHistogramX,
+        originalHistogramY,
+        label="Original Histogram",
+    )
+
+    ax3.set_xlabel("ToF")
+    ax3.set_ylabel("Count")
+    ax3.set_title("Combined Histogram")
+    ax3.legend()
+
+    plt.show()

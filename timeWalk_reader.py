@@ -9,36 +9,37 @@ param = parametersFitHistogram['param'].item()
 
 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 6))
 
-methodName = 'kde'
-print(f"Method: {methodName}")
+for methodName in param.keys():
 
-threshold = [p[0] for p in param[methodName]]
-fwhm = [p[1] for p in param[methodName]]
-peak = [p[2] for p in param[methodName]]
+    print(f"Method: {methodName}")
 
-ax1.scatter(
-    threshold,
-    fwhm,
-    label=f"{methodName}"
-)
+    threshold = [p[0] for p in param[methodName]]
+    fwhm = [p[1] for p in param[methodName]]
+    peak = [p[2] for p in param[methodName]]
 
-ax2.scatter(
-    threshold,
-    peak,
-    label=f"{methodName}"
-)
+    ax1.scatter(
+        threshold,
+        fwhm,
+        label=f"{methodName}"
+    )
 
-ax1.set_xlabel("Threshold ToF [ps]")
-ax1.set_ylabel("FWHM [ps]")
-ax1.set_title(f"Parameters on different time-walk correction methods, histogram bin=12.2ps")
-ax1.legend()
+    ax2.scatter(
+        threshold,
+        peak,
+        label=f"{methodName}"
+    )
 
-ax2.set_xlabel("Threshold ToF [ps] ")
-ax2.set_ylabel("ToF Peak [ps]")
-ax2.legend()
+    ax1.set_xlabel("Threshold ToF [ps]")
+    ax1.set_ylabel("FWHM [ps]")
+    ax1.set_title(f"Parameters on different time-walk correction methods, histogram bin=12.2ps")
+    ax1.legend()
 
-ax1.ticklabel_format(style='plain', axis='y')
-ax1.ticklabel_format(useOffset=False)
+    ax2.set_xlabel("Threshold ToF [ps] ")
+    ax2.set_ylabel("ToF Peak [ps]")
+    ax2.legend()
+
+    ax1.ticklabel_format(style='plain', axis='y')
+    ax1.ticklabel_format(useOffset=False)
 
 plt.tight_layout()
 
