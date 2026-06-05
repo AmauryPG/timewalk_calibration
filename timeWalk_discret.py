@@ -148,7 +148,6 @@ if __name__ == "__main__":
     peak_index = None
 
     for index, value in enumerate(normale_derivative[:100]):
-        print(f"{x_kde[index]} : {value}")
         
         if value < threshold:
             peak_index = index
@@ -162,7 +161,7 @@ if __name__ == "__main__":
     print(f"Difference between estimated peak and true peak: {abs(peak_estimated_x - x_kde[np.argmax(y_kde)])}")
 
 
-
+    plt.xlim(0, 100000)
     plt.ylabel("Y")
     plt.xlabel("ToF")
     plt.legend()
