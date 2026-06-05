@@ -245,7 +245,7 @@ def process_threshold(upperThresholdScattering,
         (tot_filtered[i], tof_filtered[i]) for i in range(len(tof_filtered))
     ]
 
-    rawCanals, rawToTCanals, rawToFCanals = split_canal_by_first_value(
+    rawCanals, rawToTCanals, rawToFCanals = split_canal_by_number(
         canalFiltered,
         nbrCanal
     )

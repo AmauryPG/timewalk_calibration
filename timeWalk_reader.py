@@ -10,6 +10,8 @@ param = parametersFitHistogram['param'].item()
 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 6))
 
 for methodName in param.keys():
+    if methodName != "original_12" and methodName != "original_24":
+        continue
 
     print(f"Method: {methodName}")
 
