@@ -207,3 +207,96 @@ def calculate_fwhm(x, y):
     fwhm = right_cross - left_cross
 
     return fwhm
+
+
+def interpolate_xy(x, y, num_points=1000):
+    """
+    Interpolate (x, y) data onto a new evenly spaced x grid.
+
+    Parameters
+    ----------
+    x : array-like
+        Original x values.
+    y : array-like
+        Original y values.
+    num_points : int
+        Number of points in the interpolated result.
+
+    Returns
+    -------
+    x_new : np.ndarray
+        New x values.
+    y_new : np.ndarray
+        Interpolated y values.
+    """
+    x = np.asarray(x)
+    y = np.asarray(y)
+
+    # Ensure x is sorted
+    idx = np.argsort(x)
+    x = x[idx]
+    y = y[idx]
+
+    x_new = np.linspace(x.min(), x.max(), num_points)
+    y_new = np.interp(x_new, x, y)
+
+    return x_new, y_new
+
+from scipy.interpolate import UnivariateSpline
+
+def smooth_interpolate(x, y, num_points=1000, smoothing=None):
+    """
+    Smooth and interpolate noisy (x, y) data.
+
+    Parameters
+    ----------
+    x : array-like
+        X values.
+    y : array-like
+        Y values.
+    num_points : int
+        Number of output points.
+    smoothing : float or None
+        Smoothing factor. Larger values give smoother curves.
+        If None, scipy chooses a default.
+
+    Returns
+    -------
+    x_new : np.ndarray
+    y_new : np.ndarray
+    """
+    x = np.asarray(x)
+    y = np.asarray(y)
+
+    idx = np.argsort(x)
+    x = x[idx]
+    y = y[idx]
+
+    spline = UnivariateSpline(x, y, s=smoothing)
+
+    x_new = np.linspace(x.min(), x.max(), num_points)
+    y_new = spline(x_new)
+
+    return x_new, y_new
+
+from scipy.signal import savgol_filter
+
+def smooth_interpolate_savgol(
+    x, y,
+    num_points=1000,
+    window=21,
+    polyorder=3
+):
+    x = np.asarray(x)
+    y = np.asarray(y)
+
+    idx = np.argsort(x)
+    x = x[idx]
+    y = y[idx]
+
+    y_smooth = savgol_filter(y, window, polyorder)
+
+    x_new = np.linspace(x.min(), x.max(), num_points)
+    y_new = np.interp(x_new, x, y_smooth)
+
+    return x_new, y_new

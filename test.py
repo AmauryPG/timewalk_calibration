@@ -1,24 +1,22 @@
-import pyqtgraph as pg
 import numpy as np
+from scipy.stats import exponnorm
+from scipy.optimize import minimize_scalar
 
-app = pg.mkQApp()
+mu = 0
+sigma = 1
+tau = 2
 
-n = 1_000_000
+K = tau / sigma
 
-x = np.random.rand(n)
-y = np.random.rand(n)
+pdf = lambda x: exponnorm.pdf(x, K, loc=mu, scale=sigma)
 
-w = pg.PlotWidget()
-w.show()
-
-scatter = pg.ScatterPlotItem(
-    x=x,
-    y=y,
-    size=2,
-    pen=None,
-    brush='w'
+res = minimize_scalar(
+    lambda x: -pdf(x),
+    bounds=(mu - 5*sigma, mu + 10*tau),
+    method='bounded'
 )
 
-w.addItem(scatter)
+x_peak = res.x
+y_peak = pdf(x_peak)
 
-app.exec()
+print(x_peak, y_peak)
