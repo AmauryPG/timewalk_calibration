@@ -8,6 +8,32 @@ from scipy.optimize import minimize
 from scipy.stats import gaussian_kde
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
+def timeWalk_discrete(canals):
+    nbrCanal = len(canals)
+
+    rawToFCanals = []
+    meanToFCanals = []
+
+    for canal in canals:
+        rawToFCanal = [p[1] for p in canal]
+
+        rawToFCanals.append(rawToFCanal)
+        meanToFCanals.append(np.mean(rawToFCanal))
+
+
+    # Calculate the offset for each energy canal
+    correction_coefficients_timewalk = meanToFCanals[-1] - meanToFCanals[:-1]
+
+    # Add 0 offset for the highest energy canal
+    correction_coefficients_timewalk = np.append(correction_coefficients_timewalk, 0)
+
+    correctedToFCanals = []
+
+    for index in range(nbrCanal):
+        correctedToFCanals.append(rawToFCanals[index] + correction_coefficients_timewalk[index])
+
+    return correction_coefficients_timewalk, correctedToFCanals
+
 def binless_histogram(data, n_grid=200, lam=0.01):
     """
     Binless histogram (TV-regularized density estimate).

@@ -2,6 +2,8 @@
 import numpy as np
 from scipy.optimize import curve_fit
 from scipy.stats import exponnorm
+import numpy as np
+from scipy.interpolate import splprep, splev
 
 def canals_to_histogram(canals, binWidth):
     canal_histogram = []
@@ -300,3 +302,160 @@ def smooth_interpolate_savgol(
     y_new = np.interp(x_new, x, y_smooth)
 
     return x_new, y_new
+
+def interpolate_least_square(x, y, points=1000):
+    coefficients = np.polyfit(x, y, 1) 
+    poly_func = np.poly1d(coefficients)
+
+    x_new = np.linspace(np.min(x), np.max(x), points)
+    y_new = poly_func(x_new)
+
+    return x_new, y_new
+
+import numpy as np
+from scipy.optimize import curve_fit
+from scipy.stats import exponnorm
+
+
+def emg_pdf(x, amplitude, mu, sigma, tau):
+    """
+    Exponentially Modified Gaussian (EMG).
+
+    Parameters
+    ----------
+    x : ndarray
+    amplitude : float
+        Overall scale factor.
+    mu : float
+        Gaussian mean.
+    sigma : float
+        Gaussian standard deviation.
+    tau : float
+        Exponential decay constant.
+
+    Returns
+    -------
+    ndarray
+    """
+    K = tau / sigma
+    return amplitude * exponnorm.pdf(
+        x,
+        K=K,
+        loc=mu,
+        scale=sigma
+    )
+
+
+def fit_emg(x, y):
+    """
+    Fit noisy EMG data.
+
+    Parameters
+    ----------
+    x : ndarray
+        X values.
+    y : ndarray
+        Y values.
+
+    Returns
+    -------
+    popt : tuple
+        (amplitude, mu, sigma, tau)
+    pcov : ndarray
+        Covariance matrix.
+    y_fit : ndarray
+        Fitted curve.
+    """
+
+    x = np.asarray(x)
+    y = np.asarray(y)
+
+    # Initial guesses
+    amplitude0 = np.max(y)
+
+    mu0 = x[np.argmax(y)]
+
+    sigma0 = np.std(x) / 5
+
+    # estimate asymmetry
+    mean_x = np.sum(x * y) / np.sum(y)
+    tau0 = max(mean_x - mu0, sigma0)
+
+    p0 = [amplitude0, mu0, sigma0, tau0]
+
+    bounds = (
+        [0, np.min(x), 1e-6, 1e-6],
+        [np.inf, np.max(x), np.inf, np.inf]
+    )
+
+    popt, pcov = curve_fit(
+        emg_pdf,
+        x,
+        y,
+        p0=p0,
+        bounds=bounds,
+        maxfev=20000
+    )
+
+    y_fit = emg_pdf(x, *popt)
+
+    return popt, pcov, y_fit
+
+
+def smooth_curve(x, y, num_points=1000, smoothing_factor=None):
+    """
+    Create a smooth continuous curve from scattered x,y data.
+
+    Parameters
+    ----------
+    x : array-like
+        X coordinates.
+    y : array-like
+        Y coordinates.
+    num_points : int, optional
+        Number of points in the output curve.
+    smoothing_factor : float or None, optional
+        Spline smoothing parameter (s).
+        - s=0 passes through all points.
+        - Larger values produce smoother curves.
+
+    Returns
+    -------
+    x_smooth : ndarray
+        Smooth x values.
+    y_smooth : ndarray
+        Smooth y values.
+    """
+    x = np.asarray(x)
+    y = np.asarray(y)
+
+    # Sort by x
+    idx = np.argsort(x)
+    x = x[idx]
+    y = y[idx]
+
+    # Remove duplicate x values
+    x_unique, unique_idx = np.unique(x, return_index=True)
+    y_unique = y[unique_idx]
+
+    spline = UnivariateSpline(
+        x_unique,
+        y_unique,
+        s=smoothing_factor
+    )
+
+    x_smooth = np.linspace(x_unique.min(), x_unique.max(), num_points)
+    y_smooth = spline(x_smooth)
+
+    return x_smooth, y_smooth
+
+
+def smooth_path(x, y, num_points=1000, smoothing=0):
+    points = np.vstack([x, y])
+
+    tck, _ = splprep(points, s=smoothing)
+    u_new = np.linspace(0, 1, num_points)
+
+    x_smooth, y_smooth = splev(u_new, tck)
+
+    return np.array(x_smooth), np.array(y_smooth)
