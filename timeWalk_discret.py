@@ -5,21 +5,35 @@ from scipy.stats import gaussian_kde
 from scipy.stats import exponnorm
 from tools import *
 
-def timeWalk_discrete_histogram(tof):
-    returnArray = {}
+def integral_count(array):
+    integral = {}
 
-    tof_sorted = np.sort(tof)
+    tof_sorted = np.sort(array)
 
     for index, event in enumerate(tof_sorted):
-        if event in returnArray:
-            returnArray[event] = returnArray[event] + 1
+        if event in integral:
+            integral[event] = integral[event] + 1
         else:
-            returnArray[event] = index + 1
+            integral[event] = index + 1
 
-    value = list(returnArray.keys())
-    count = list(returnArray.values())
+    value = list(integral.keys())
+    count = list(integral.values())
 
-    return value, count, returnArray
+    return value, count, integral
+
+
+def timeWalk_discrete_histogram(tof, num_points=100000):
+    
+    # Integral 
+    value, count, _ = integral_count(tof)
+
+    # Smooth out the integral
+    interpolated_value, interpolated_count = interpolate_xy(value, count, num_points=num_points)
+
+    # Differential
+    derivate_sigmoid = np.gradient(interpolated_count, interpolated_value)
+
+    return interpolated_value, derivate_sigmoid
 
 
 def cumulative_integral(x, y):
@@ -60,24 +74,25 @@ if __name__ == "__main__":
     )
     #tof = emg_samples(mu=1000, sigma=200, tau=400, size=10000)
 
-    # -------------------------
-    value, count, sigmoid = timeWalk_discrete_histogram(tof)
-
-    interpolated_value, interpolated_count = interpolate_xy(value, count, num_points=10000)
+    tof = tof[tof < 50000]
 
     # -------------------------
-    derivate_sigmoid = np.gradient(interpolated_count, interpolated_value)
+    bin = 12.2
+    x_histogram, y_histogram = histogram(tof, bin)
+    y_histogram = y_histogram / np.max(y_histogram)
+
+    # -------------------------
     
+    # Integral 
+    value, count, _ = integral_count(tof)
 
-    # -------------------------
-    kde = gaussian_kde(tof)
+    # Smooth out the integral
+    interpolated_value_small, interpolated_count_small = interpolate_xy(value, count, num_points=100000)
+    interpolated_value_big, interpolated_count_big = interpolate_xy(value, count, num_points=1000000)
 
-    x_kde, y_kde =  histogram(tof, 12.2)
-    
-
-    # -------------------------
-    binless_value, binless_count = smooth_path(interpolated_value, derivate_sigmoid, smoothing=20)
-    binless_count = binless_count / np.max(binless_count)
+    # Differential
+    derivate_sigmoid_small = np.gradient(interpolated_count_small, interpolated_value_small)
+    derivate_sigmoid_big = np.gradient(interpolated_count_big, interpolated_value_big)
 
     # -------------------------
 
@@ -93,61 +108,60 @@ if __name__ == "__main__":
     plt_0.addLegend()
 
     # set properties of the label for y axis
-    plt_0.setLabel('left', 'Vertical Values', units ='y')
+    plt_0.setLabel('left', 'Count', units ='A.U.')
+    #plt_0.setLabel('left', 'Normalized Count', units ='A.U.')
 
     # set properties of the label for x axis
     plt_0.setLabel('bottom', 'ToF', units ='ps')
 
-    scatter_sigmoid = pg.ScatterPlotItem(
-        x=interpolated_value,
-        y=interpolated_count / np.max(interpolated_count),
+    scatter_histogram = pg.ScatterPlotItem(
+        x=x_histogram,
+        y=y_histogram,
         size=2,
-        pen='g',
+        pen='m',
         brush='w',
-        name="sigmoid"
+        name=f"Histogram bin width={bin}"
     )
 
-    scatter_kde = pg.ScatterPlotItem(
-        x=x_kde,
-        y=y_kde / np.max(y_kde),
+    scatter_integral_big = pg.ScatterPlotItem(
+        x=interpolated_value_big,
+        y=interpolated_count_big,
+        size=2,
+        pen='w',
+        brush='w',
+        name="Interpolated integral points=1000000"
+    )
+
+    scatter_binless_big = pg.ScatterPlotItem(
+        x=interpolated_value_big,
+        y=derivate_sigmoid_big,
         size=2,
         pen='r',
         brush='w',
-        name="Histogram classic bin=12.2ps"
+        name="Bin less histogram points=1000000"
     )
 
-    scatter_binless_derivate_sigmoid = pg.PlotDataItem(
-        x=binless_value,
-        y=binless_count,
-        pen='m',
-        name="interpolated derived sigmoid"
-    )
-
-    scatter_derivate_sigmoid = pg.ScatterPlotItem(
-        x=interpolated_value,
-        y=derivate_sigmoid / np.max(derivate_sigmoid),
+    scatter_integral_small = pg.ScatterPlotItem(
+        x=interpolated_value_small,
+        y=interpolated_count_small,
         size=2,
-        pen='m',
+        pen='w',
         brush='w',
-        name="derived sigmoid"
+        name="Interpolated integral points=100000"
     )
 
-    plt_0.addItem(scatter_sigmoid)
-    plt_0.addItem(scatter_kde)
-    plt_0.addItem(scatter_derivate_sigmoid)
-    plt_0.addItem(scatter_binless_derivate_sigmoid)
+    scatter_binless_small = pg.ScatterPlotItem(
+        x=interpolated_value_small,
+        y=derivate_sigmoid_small,
+        size=2,
+        pen='g',
+        brush='w',
+        name="Bin less histogram points=100000"
+    )
 
-    peak = x_kde[np.argmax(y_kde)]
-    peak_estimated = binless_value[np.argmax(binless_count)]
+    plt_0.addItem(scatter_binless_big)
+    plt_0.addItem(scatter_binless_small)
 
-    plt_0.addLine(x=peak, pen=pg.mkPen('r', width=3))
-    plt_0.addLine(x=peak_estimated, pen=pg.mkPen('g', width=3))
-    
-    print(f"Real peak : {peak}")
-    print(f"Estimated peak : {peak_estimated}")
-
-    print(f"FWHM Real     : {calculate_fwhm(binless_value, binless_count)}")
-    print(f"FWHM Estimate : {calculate_fwhm(x_kde, y_kde)}")
 
     app.exec()
 
