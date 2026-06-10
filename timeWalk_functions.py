@@ -34,6 +34,14 @@ def timeWalk_discrete(canals):
 
     return correction_coefficients_timewalk, correctedToFCanals
 
+def kde_histogram(data, numberPoints=1000):
+    kde = gaussian_kde(data)
+
+    x = np.linspace(min(data), max(data), numberPoints)
+    y = kde(x) * len(data)
+
+    return x, y
+
 def binless_histogram(data, n_grid=200, lam=0.01):
     """
     Binless histogram (TV-regularized density estimate).
@@ -176,10 +184,7 @@ def timeWalkCorrection_kde(canals):
 
     for index in range(nbrCanal):
 
-        kde = gaussian_kde(rawToFCanals[index])
-
-        x = np.linspace(min(rawToFCanals[index]), max(rawToFCanals[index]), 1000)
-        y = kde(x)
+        x, y = kde_histogram(rawToFCanals[index])
 
         index_peak_y = np.argmax(y)
 

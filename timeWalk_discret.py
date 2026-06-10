@@ -22,7 +22,7 @@ def integral_count(array):
     return value, count, integral
 
 
-def timeWalk_discrete_histogram(tof, num_points=100000):
+def discrete_histogram(tof, num_points=100000):
     
     # Integral 
     value, count, _ = integral_count(tof)

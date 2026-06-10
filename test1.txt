@@ -1,0 +1,5 @@
+Histogram Method               | Peak     : FWHM    
+histogram                      | 40823.84 : 702.61
+discrete_histogram             | 40827.31 : 679.97
+kde_histogram                  | 40891.63 : 5428.11
+binless_histogram              | 44265.78 : -261828.57

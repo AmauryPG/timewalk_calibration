@@ -68,7 +68,7 @@ def split_canal_by_first_value(arr, n):
 
     return buckets, bucketsToT, bucketsToF
 
-def histogram(data, binWidth):
+def histogram(data, binWidth=12.2):
     """
     Create a histogram from a 1D array using a fixed bin width.
 
