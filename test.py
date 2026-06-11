@@ -1,22 +1,32 @@
 import numpy as np
-from scipy.stats import exponnorm
-from scipy.optimize import minimize_scalar
+from tools import *
+import matplotlib.pyplot as plt
+import pyqtgraph as pg
+from pyqtgraph.exporters import ImageExporter
 
-mu = 0
-sigma = 1
-tau = 2
+from timeWalk_discret import *
+from timeWalk_functions import *
 
-K = tau / sigma
-
-pdf = lambda x: exponnorm.pdf(x, K, loc=mu, scale=sigma)
-
-res = minimize_scalar(
-    lambda x: -pdf(x),
-    bounds=(mu - 5*sigma, mu + 10*tau),
-    method='bounded'
+tot, tof, size = readBinaryWeerocFileWithPicoCalibrated(
+    "~/Documents/data/measures/21_avril/data_section_2_Btot49_Btoa12_Gain10_Thr700_56-65V_Freq80000_60s.bin"
 )
 
-x_peak = res.x
-y_peak = pdf(x_peak)
+lowerToFThreshold = 7.5E4
 
-print(x_peak, y_peak)
+app = pg.mkQApp()
+
+window = pg.GraphicsLayoutWidget(show=True, title="ToF Analysis")
+window.resize(1200, 800)
+
+plt_0 = window.addPlot(row=0, col=0, title="")
+
+for threshold in np.arange(lowerToFThreshold, np.max(tof), 1E4):
+    #cut_tof = tof[tof < threshold]
+    threshold = pg.InfiniteLine(
+        pos=0.5,
+        angle=90,      # vertical line
+        movable=True,
+        pen='r'
+    )
+
+    plt_0.addItem(threshold)

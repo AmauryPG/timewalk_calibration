@@ -4,6 +4,7 @@ import numpy as np
 from scipy.stats import gaussian_kde
 from scipy.stats import exponnorm
 from tools import *
+import matplotlib.pyplot as plt
 
 def integral_count(array):
     integral = {}
@@ -68,7 +69,7 @@ def emg_samples(mu, sigma, tau, size=10000):
     K = tau / sigma
     return exponnorm.rvs(K=K, loc=mu, scale=sigma, size=size)
 
-if __name__ == "__main__":
+def main_test_data():
     tot, tof, size = readBinaryWeerocFileWithPicoCalibrated(
         "~/Documents/data/measures/21_avril/data_section_2_Btot49_Btoa12_Gain10_Thr700_56-65V_Freq80000_60s.bin"
     )
@@ -79,7 +80,7 @@ if __name__ == "__main__":
     # -------------------------
     bin = 12.2
     x_histogram, y_histogram = histogram(tof, bin)
-    y_histogram = y_histogram / np.max(y_histogram)
+    #y_histogram = y_histogram / np.max(y_histogram)
 
     # -------------------------
     
@@ -87,14 +88,18 @@ if __name__ == "__main__":
     value, count, _ = integral_count(tof)
 
     # Smooth out the integral
-    interpolated_value_small, interpolated_count_small = interpolate_xy(value, count, num_points=100000)
-    interpolated_value_big, interpolated_count_big = interpolate_xy(value, count, num_points=1000000)
+    number_points = 10000
+    interpolated_value, interpolated_count = interpolate_xy(value, count, num_points=number_points)
 
     # Differential
-    derivate_sigmoid_small = np.gradient(interpolated_count_small, interpolated_value_small)
-    derivate_sigmoid_big = np.gradient(interpolated_count_big, interpolated_value_big)
+    derivate_sigmoid = np.gradient(interpolated_count, interpolated_value)
+
+    print(np.max(y_histogram) / np.max(derivate_sigmoid))
+
+    derivate_sigmoid = derivate_sigmoid * bin
 
     # -------------------------
+
 
     app = pg.mkQApp()
 
@@ -114,54 +119,83 @@ if __name__ == "__main__":
     # set properties of the label for x axis
     plt_0.setLabel('bottom', 'ToF', units ='ps')
 
+    scatter_binless = pg.ScatterPlotItem(
+        x=interpolated_value,
+        y=derivate_sigmoid,
+        size=2,
+        pen='r',
+        brush='w',
+        name=f"Bin less histogram points={number_points}"
+    )
+
+    scatter_integral = pg.ScatterPlotItem(
+        x=interpolated_value,
+        y=interpolated_count,
+        size=2,
+        pen='w',
+        brush='w',
+        name=f"Interpolated integral points={number_points}"
+    )
+
     scatter_histogram = pg.ScatterPlotItem(
         x=x_histogram,
         y=y_histogram,
         size=2,
-        pen='m',
-        brush='w',
-        name=f"Histogram bin width={bin}"
-    )
-
-    scatter_integral_big = pg.ScatterPlotItem(
-        x=interpolated_value_big,
-        y=interpolated_count_big,
-        size=2,
         pen='w',
         brush='w',
-        name="Interpolated integral points=1000000"
+        name=f"Histogram bin={bin}"
     )
 
-    scatter_binless_big = pg.ScatterPlotItem(
-        x=interpolated_value_big,
-        y=derivate_sigmoid_big,
-        size=2,
-        pen='r',
-        brush='w',
-        name="Bin less histogram points=1000000"
-    )
 
-    scatter_integral_small = pg.ScatterPlotItem(
-        x=interpolated_value_small,
-        y=interpolated_count_small,
-        size=2,
-        pen='w',
-        brush='w',
-        name="Interpolated integral points=100000"
-    )
-
-    scatter_binless_small = pg.ScatterPlotItem(
-        x=interpolated_value_small,
-        y=derivate_sigmoid_small,
-        size=2,
-        pen='g',
-        brush='w',
-        name="Bin less histogram points=100000"
-    )
-
-    plt_0.addItem(scatter_binless_big)
-    plt_0.addItem(scatter_binless_small)
+    plt_0.addItem(scatter_binless)
+    plt_0.addItem(scatter_histogram)
 
 
     app.exec()
 
+def main_method():
+    K = 2.0        # Shape parameter (higher K means a longer exponential tail)
+    loc = 20      # Mean of the underlying Gaussian component
+    scale = 10   # Standard deviation of the underlying Gaussian component
+    size = 1000    # Number of data points to generate
+
+    emg_dataset = exponnorm.rvs(K, loc=loc, scale=scale, size=size)
+    id_histogram_x, id_histogram_y = discrete_histogram(emg_dataset, 100)
+
+    index_coefficient = np.argmax(id_histogram_y)
+
+
+    coefficient = id_histogram_y[index_coefficient]
+
+    bin = 20
+    histogram_x, histogram_y = histogram(emg_dataset, bin)
+
+    print(f"cof {coefficient}")
+    print(f"peak id   : {np.max(id_histogram_y)}")
+    print(f"peak hist : {np.max(histogram_y)}")
+
+    plt.scatter(
+        id_histogram_x,
+        id_histogram_y * bin,
+        label="ID method"
+    )
+
+    plt.scatter(
+        histogram_x,
+        histogram_y,
+        label=f"Histogram method bin={bin}"
+    )
+    
+    print(np.max(histogram_y) / np.max(id_histogram_y))
+
+    plt.title("Exponentially Modified Gaussian (EMG) Dataset")
+    plt.xlabel("Value")
+    plt.ylabel("Density")
+    plt.legend()
+    plt.show()
+
+
+
+if __name__ == "__main__":
+    #main_test_data()
+    main_method()
