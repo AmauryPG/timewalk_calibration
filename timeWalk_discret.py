@@ -157,40 +157,50 @@ def main_method():
     K = 2.0        # Shape parameter (higher K means a longer exponential tail)
     loc = 20      # Mean of the underlying Gaussian component
     scale = 10   # Standard deviation of the underlying Gaussian component
-    size = 1000    # Number of data points to generate
+    size = 100000    # Number of data points to generate
+
+    bin = 2
 
     emg_dataset = exponnorm.rvs(K, loc=loc, scale=scale, size=size)
     id_histogram_x, id_histogram_y = discrete_histogram(emg_dataset, 100)
+    id_histogram_y = id_histogram_y * bin
 
     index_coefficient = np.argmax(id_histogram_y)
 
 
     coefficient = id_histogram_y[index_coefficient]
 
-    bin = 20
     histogram_x, histogram_y = histogram(emg_dataset, bin)
 
     print(f"cof {coefficient}")
-    print(f"peak id   : {np.max(id_histogram_y)}")
-    print(f"peak hist : {np.max(histogram_y)}")
+    print(f"peak id     : {np.max(id_histogram_y)}")
+    print(f"peak hist   : {np.max(histogram_y)}")
+    print(f"Ratio peaks : {np.max(histogram_y) / np.max(id_histogram_y)}")
 
-    plt.scatter(
-        id_histogram_x,
-        id_histogram_y * bin,
-        label="ID method"
+    bin_edges = np.arange(min(emg_dataset), max(emg_dataset) + bin, bin)
+
+    plt.hist(
+        emg_dataset,
+        bins=bin_edges, 
+        color="r"
     )
 
     plt.scatter(
+        id_histogram_x,
+        id_histogram_y,
+        label="ID method"
+    )
+
+    plt.plot(
         histogram_x,
         histogram_y,
         label=f"Histogram method bin={bin}"
     )
     
-    print(np.max(histogram_y) / np.max(id_histogram_y))
 
     plt.title("Exponentially Modified Gaussian (EMG) Dataset")
     plt.xlabel("Value")
-    plt.ylabel("Density")
+    plt.ylabel("Count")
     plt.legend()
     plt.show()
 
