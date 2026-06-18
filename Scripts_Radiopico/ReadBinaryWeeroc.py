@@ -81,7 +81,6 @@ def readBinaryWeerocFile(path, TOF_ON=True):
 
     # Extract metadata
     parts = fname.split("_")
-    f_port = int(parts[2])
     tag = "_".join(parts[3:])
 
     # Default parameters

@@ -2,6 +2,64 @@
 import numpy as np
 from scipy.optimize import curve_fit
 from scipy.stats import exponnorm
+import re
+
+def extractWeerocParameters(filename):
+    # Extract section
+    index_start = re.search("section", filename)
+    index_end = re.search("_", filename[index_start.end() + 1:])
+
+    index_section_beginning = index_start.end() + 1
+    index_section_ending = index_start.end() + index_end.start() + 1
+
+    section = float(filename[index_section_beginning:index_section_ending])
+
+    # Extract gain
+    index_start = re.search("Gain", filename)
+    index_end = re.search("_", filename[index_start.end():])
+
+    index_gain_beginning = index_start.end()
+    index_gain_ending = index_start.end() + index_end.start()
+
+    gain = float(filename[index_gain_beginning:index_gain_ending])
+
+    # Extract threshold
+    index_start = re.search("Thr", filename)
+    index_end = re.search("_", filename[index_start.end():])
+
+    index_threshold_beginning = index_start.end()
+    index_threshold_ending = index_start.end() + index_end.start()
+
+    threshold = float(filename[index_threshold_beginning:index_threshold_ending].replace("-", "."))
+
+    # Extract biais
+    index_start = index_threshold_ending+1
+    index_end = re.search("V", filename[index_threshold_ending:])
+
+    index_gain_beginning = index_start
+    index_gain_ending = index_start + index_end.start() - 1 
+
+    biais = float(filename[index_gain_beginning:index_gain_ending].replace("-", "."))
+
+    # Extract frequency
+    index_start = re.search("Freq", filename)
+    index_end = re.search("_", filename[index_start.end():])
+
+    index_frequency_beginning = index_start.end()
+    index_frequency_ending = index_start.end() + index_end.start()
+
+    frequency = float(filename[index_frequency_beginning:index_frequency_ending].replace("-", "."))
+
+    # Extract duration 
+    index_start = index_frequency_ending
+    index_end = re.search("s", filename[index_frequency_ending:])
+
+    index_frequency_beginning = index_start + 1
+    index_frequency_ending = index_start + index_end.start()
+
+    duration = float(filename[index_frequency_beginning:index_frequency_ending].replace("-", "."))
+
+    return section, gain, threshold, biais, frequency, duration
 
 def canals_to_histogram(canals, binWidth):
     canal_histogram = []
