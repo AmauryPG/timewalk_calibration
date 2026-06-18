@@ -1,76 +1,47 @@
-from timeWalk_functions import *
-from tools import *
+from histogram_methods import *
+from Scripts_Radiopico.ReadBinaryWeeroc import *
+import sys
+
+import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
 
-    tot, tof, size = readBinaryWeerocFileWithPicoCalibrated(
-        "~/Documents/data/measures/21_avril/data_section_2_Btot49_Btoa12_Gain10_Thr700_56-65V_Freq80000_60s.bin"
-    )
+    if len(sys.argv) < 2:
+        print("Need the file path")
+        exit(1)
 
-    nbrCanal = 8
-    canalFiltered = []
-    binWidth = 12
+    tot, tof, size = readBinaryWeerocFileWithPicoCalibrated(sys.argv[1])
 
-    threshold = 2400
+    fig, axes = plt.subplots(2, 1, figsize=(10, 4))
 
-    for i in range(size):
-        if tot[i] > threshold and tot[i] < 4E4 and tof[i] < 4.5E4:
-            canalFiltered.append((tot[i], tof[i]))
+    axes[0].set_xlabel("ToF")
+    axes[0].set_ylabel("Count")
+    axes[1].set_xlabel("ToF")
+    axes[1].set_ylabel("Normalized Count")
 
-    rawCanals, rawToTCanals, rawToFCanals = split_canal_by_number(canalFiltered, nbrCanal)
-    correction_coefficients_timewalk_kde, correctedToFCanals_kde = timeWalkCorrection_kde(rawCanals)
-    correctedHistogramToF, correctedHistogramToF_canals = canals_to_histogram(correctedToFCanals_kde, binWidth=binWidth)
+    histogram_data = []
 
-    print(f"Correction coefficients (kde): {correction_coefficients_timewalk_kde}")
+    classical_histogram_x, classical_histogram_y = histogram(tof, 12.2)
+    #kde_histogram_x, kde_histogram_y = kde(tof)
+    id_histogram_x, id_histogram_y = id(tof)
 
-    plt.close()
-    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(8, 6))
+    histogram_data.append(("Classical Histogram", classical_histogram_x, classical_histogram_y))
+    #histogram_data.append(("KDE Histogram", kde_histogram_x, kde_histogram_y))
+    histogram_data.append(("ID Histogram", id_histogram_x, id_histogram_y))
 
-    for index in range(nbrCanal):
-        ax1.scatter(rawToTCanals[index],
-                    rawToFCanals[index],
-                    label=f"Canal {index}",
-                    s=5,
-                    alpha=0.4,
-                    edgecolors="none")
-        
-    ax1.set_xlabel("ToT")
-    ax1.set_ylabel("ToF")
-    ax1.set_title("Raw Data")
-    ax1.legend()
+    for data in histogram_data:
+        axes[0].scatter(
+            data[1],
+            data[2],
+            label=data[0]
+        )
 
-    arr = np.array(rawToTCanals, dtype=object)
+        axes[1].scatter(
+                data[1],
+                data[2] / np.max(data[2]),
+                label=data[0]
+            )
 
-    for index in range(nbrCanal):
-        ax2.scatter(rawToTCanals[index],
-                    correctedToFCanals_kde[index],
-                    label=f"Canal {index}",
-                    s=5,
-                    alpha=0.4,
-                    edgecolors="none")
-        
-    ax2.set_xlabel("ToT")
-    ax2.set_ylabel("ToF")
-    ax2.set_title("Corrected Raw Data")
-    ax2.legend()
-    
-    ax3.plot(
-        correctedHistogramToF[0],
-        correctedHistogramToF[1],
-        label="Corrected Histogram",
-    )
-
-    originalHistogramX, originalHistogramY = histogram([p[1] for p in canalFiltered], binWidth=binWidth)
-
-    ax3.plot(
-        originalHistogramX,
-        originalHistogramY,
-        label="Original Histogram",
-    )
-
-    ax3.set_xlabel("ToF")
-    ax3.set_ylabel("Count")
-    ax3.set_title("Combined Histogram")
-    ax3.legend()
-
+    axes[0].legend(loc="best")
+    axes[1].legend(loc="best")
     plt.show()

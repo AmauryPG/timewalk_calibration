@@ -66,61 +66,6 @@ def split_canal_by_first_value(arr, n):
 
     return buckets, bucketsToT, bucketsToF
 
-def histogram(data, binWidth):
-    """
-    Create a histogram from a 1D array using a fixed bin width.
-
-    Parameters
-    ----------
-    data : list of numbers
-        Input values.
-    binWidth : float
-        Width of each bin.
-
-    Returns
-    -------
-    counts : list
-        Histogram counts.
-    edges : list
-        Bin edges.
-    """
-
-    if len(data) == 0:
-        return [], []
-
-    # Find min and max
-    min_val = data[0]
-    max_val = data[0]
-
-    for x in data:
-        if x < min_val:
-            min_val = x
-        if x > max_val:
-            max_val = x
-
-    # Number of bins
-    bins = int((max_val - min_val) / binWidth) + 1
-
-    # Initialize counts
-    counts = [0] * bins
-
-    # Fill histogram
-    for x in data:
-        index = int((x - min_val) / binWidth)
-
-        # Safety clamp
-        if index >= bins:
-            index = bins - 1
-
-        counts[index] += 1
-
-    # Bin edges
-    edges = []
-    for i in range(bins + 1):
-        edges.append(min_val + i * binWidth)
-
-    return edges[:-1], counts
-
 def emg_function(x, amplitude, mu, sigma, tau):
     """
     Exponentially Modified Gaussian (EMG)
