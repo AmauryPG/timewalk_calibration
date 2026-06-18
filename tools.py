@@ -2,8 +2,64 @@
 import numpy as np
 from scipy.optimize import curve_fit
 from scipy.stats import exponnorm
-import numpy as np
-from scipy.interpolate import splprep, splev
+import re
+
+def extractWeerocParameters(filename):
+    # Extract section
+    index_start = re.search("section", filename)
+    index_end = re.search("_", filename[index_start.end() + 1:])
+
+    index_section_beginning = index_start.end() + 1
+    index_section_ending = index_start.end() + index_end.start() + 1
+
+    section = float(filename[index_section_beginning:index_section_ending])
+
+    # Extract gain
+    index_start = re.search("Gain", filename)
+    index_end = re.search("_", filename[index_start.end():])
+
+    index_gain_beginning = index_start.end()
+    index_gain_ending = index_start.end() + index_end.start()
+
+    gain = float(filename[index_gain_beginning:index_gain_ending])
+
+    # Extract threshold
+    index_start = re.search("Thr", filename)
+    index_end = re.search("_", filename[index_start.end():])
+
+    index_threshold_beginning = index_start.end()
+    index_threshold_ending = index_start.end() + index_end.start()
+
+    threshold = float(filename[index_threshold_beginning:index_threshold_ending].replace("-", "."))
+
+    # Extract biais
+    index_start = index_threshold_ending+1
+    index_end = re.search("V", filename[index_threshold_ending:])
+
+    index_gain_beginning = index_start
+    index_gain_ending = index_start + index_end.start() - 1 
+
+    biais = float(filename[index_gain_beginning:index_gain_ending].replace("-", "."))
+
+    # Extract frequency
+    index_start = re.search("Freq", filename)
+    index_end = re.search("_", filename[index_start.end():])
+
+    index_frequency_beginning = index_start.end()
+    index_frequency_ending = index_start.end() + index_end.start()
+
+    frequency = float(filename[index_frequency_beginning:index_frequency_ending].replace("-", "."))
+
+    # Extract duration 
+    index_start = index_frequency_ending
+    index_end = re.search("s", filename[index_frequency_ending:])
+
+    index_frequency_beginning = index_start + 1
+    index_frequency_ending = index_start + index_end.start()
+
+    duration = float(filename[index_frequency_beginning:index_frequency_ending].replace("-", "."))
+
+    return section, gain, threshold, biais, frequency, duration
 
 def canals_to_histogram(canals, binWidth):
     canal_histogram = []
@@ -67,61 +123,6 @@ def split_canal_by_first_value(arr, n):
         bucketsToF[index].append(item[1])
 
     return buckets, bucketsToT, bucketsToF
-
-def histogram(data, binWidth=12.2):
-    """
-    Create a histogram from a 1D array using a fixed bin width.
-
-    Parameters
-    ----------
-    data : list of numbers
-        Input values.
-    binWidth : float
-        Width of each bin.
-
-    Returns
-    -------
-    counts : list
-        Histogram counts.
-    edges : list
-        Bin edges.
-    """
-
-    if len(data) == 0:
-        return [], []
-
-    # Find min and max
-    min_val = data[0]
-    max_val = data[0]
-
-    for x in data:
-        if x < min_val:
-            min_val = x
-        if x > max_val:
-            max_val = x
-
-    # Number of bins
-    bins = int((max_val - min_val) / binWidth) + 1
-
-    # Initialize counts
-    counts = [0] * bins
-
-    # Fill histogram
-    for x in data:
-        index = int((x - min_val) / binWidth)
-
-        # Safety clamp
-        if index >= bins:
-            index = bins - 1
-
-        counts[index] += 1
-
-    # Bin edges
-    edges = []
-    for i in range(bins + 1):
-        edges.append(min_val + i * binWidth)
-
-    return edges[:-1], counts
 
 def emg_function(x, amplitude, mu, sigma, tau):
     """
